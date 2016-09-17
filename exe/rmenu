@@ -1,0 +1,19 @@
+require "rmenu"
+require "thor"
+
+module RMenu
+  class CLI < Thor
+
+    DEFAULT_CONFIG_FILE = File.expand_path(".rmenu.yml", "~")
+
+    class_option :config, :default => DEFAULT_CONFIG_FILE
+
+    desc "start", "Start rmenu instance in background"
+    def start
+      rmenu_instance = RMenu::Main.new :config_file => options[:config]
+      rmenu_instance.start
+    end
+  end
+end
+
+RMenu::CLI.start ARGV
