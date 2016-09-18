@@ -165,6 +165,16 @@ module RMenu
           save_items
           item
         end
+      elsif md = item.value.match(/^:delete/)
+        $logger.debug ":delete command called"
+        picker = DMenuWrapper.new config
+        picker.prompt = "Delete item:"
+        picker.items = items
+        item = picker.get_item
+        $logger.debug "indexed item = #{item.inspect}"
+        items.delete item
+        save_items
+        item
       elsif md = item.value.match(/^http(s?):\/\//)
         system_exec config[:web_browser], item.value
       elsif md = item.value.match(/(.+);$/)
