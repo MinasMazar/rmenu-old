@@ -66,6 +66,14 @@ module RMenu
       self.items = item + rmenu_items + load_items
     end
 
+    def load_items
+      YAML.load_file config[:items_file] || []
+    end
+
+    def save_items
+      File.write config[:items_file], YAML.dump(items)
+    end
+
     def call(item)
       $logger.debug "Selected #{item.inspect}"
 
@@ -101,10 +109,6 @@ module RMenu
 
     private
 
-    def load_items
-      YAML.load_file config[:items_file] || []
-    end
-
     def rmenu_items
       [ Item.format!(" **RMenu Commands**", [
                        Item.format!("Config", :conf),
@@ -128,7 +132,7 @@ module RMenu
 
     def replace_blocks(cmd)
       cmd_replaced = cmd
-      while md = cmd.match(/(\{(.+)\})/)
+      while md = cmd.match(/(\{([^\{\}]+?)\})/)
         break unless md[1] || md[2]
         cmd_replaced.sub!(md[0], self.instance_eval(md[2]).to_s)
       end
@@ -152,17 +156,21 @@ module RMenu
           item = picker.get_item
           call item
         end
+      elsif md = item.value.match(/^:add\s+(.+)/)
+        if md[1] && ( md = md[1].match(/(.+)\s*#\s*(.*)/) )
+          value = md[1]
+          key = md[2] || value
+          item = Item.format!(key, value)
+          items.unshift item
+          save_items
+          item
+        end
       elsif md = item.value.match(/^http(s?):\/\//)
         system_exec config[:web_browser], item.value
       elsif md = item.value.match(/(.+);$/)
-        item.options[:term_exec] = true
-        item.value = md[1]
+        system_exec config[:terminal], "-e", "\"", item.value, "\""
       else
-        if item.options[:term_exec]
-          system_exec config[:terminal], "-e", "\"", item.value, "\""
-        else
-          system_exec item.value
-        end
+        system_exec item.value
       end
     end
 
