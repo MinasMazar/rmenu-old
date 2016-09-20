@@ -7,6 +7,8 @@ module RMenu
     attr_accessor :dmenu_thread_flag
     attr_accessor :dmenu_thread
 
+    include Utils
+ 
     def initialize(params = {})
       @config_file = (params[:config_file] || DEFAULT_CONFIG_FILE)
       load_config
@@ -114,13 +116,6 @@ module RMenu
       elsif item.value.is_a? String
         cmd = item.value
         cmd = replace_tokens cmd
-        begin
-          cmd = replace_blocks cmd
-        rescue StandardError => e
-          $logger.debug "Exception catched while replacing blocks in the command: #{e.inspect}"
-          notify "Exception catched while replacing blocks in the command: #{e.inspect}"
-          cmd = ''
-        end
         $logger.debug "CMD: #{cmd}"
         unless cmd.empty?
           proc_string_item item
@@ -193,18 +188,24 @@ module RMenu
         break unless md[1] || md[2]
         picker.prompt = md[2]
         input = picker.get_item
-        cmd_replaced.sub!(md[0], input.value)
+        cmd_replaced.sub!(md[0], "\"#{input.value}\"")
       end
       cmd_replaced
     end
 
     def replace_blocks(cmd)
       cmd_replaced = cmd
-      while md = cmd.match(/(\{([^\{\}]+?)\})/)
-        break unless md[1] || md[2]
-        cmd_replaced.sub!(md[0], self.instance_eval(md[2]).to_s)
+      begin
+        while md = cmd.match(/(\{([^\{\}]+?)\})/)
+          break unless md[1] || md[2]
+          cmd_replaced.sub!(md[0], self.instance_eval(md[2]).to_s)
+        end
+        cmd_replaced
+      rescue StandardError => e
+        $logger.debug "Exception catched while replacing blocks in the command: #{e.inspect}"
+        notify "Exception catched while replacing blocks in the command: #{e.inspect}"
+        cmd = nil
       end
-      cmd_replaced
     end
 
     def proc_string_item(item)
@@ -239,12 +240,19 @@ module RMenu
         items.uniq!
         save_items
         item
-      elsif md = item.value.match(/^http(s?):\/\//)
-        system_exec config[:web_browser], item.value
-      elsif md = item.value.match(/(.+);$/)
-        system_exec config[:terminal], "-e", "\"", item.value, "\""
       else
-        system_exec item.value
+        cmd = item.value
+        cmd = replace_tokens cmd
+        $logger.debug "Command interpolated with input tokens: #{cmd}"
+        cmd = replace_blocks cmd
+        $logger.debug "Command interpolated with eval blocks: #{cmd}"
+        if md = cmd.match(/^http(s?):\/\//)
+          system_exec config[:web_browser], cmd
+        elsif md = cmd.match(/(.+);$/)
+          system_exec config[:terminal], "-e", "\"", cmd, "\""
+        else
+          system_exec cmd
+        end
       end
     end
 
