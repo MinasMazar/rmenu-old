@@ -87,6 +87,19 @@ module RMenu
       call Item.new(":delete", ":delete")
     end
 
+    def notify(msg)
+      notifier = DMenuWrapper.new config
+      notifier.prompt = msg
+      notifier.get_item
+    end
+
+    def pick_item(prompt, items)
+      picker = DMenuWrapper.new config
+      picker.prompt = prompt
+      picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
+      item = picker.get_item
+    end
+
     def call(item)
       $logger.debug "Selected #{item.inspect}"
 
@@ -101,7 +114,13 @@ module RMenu
       elsif item.value.is_a? String
         cmd = item.value
         cmd = replace_tokens cmd
-        cmd = replace_blocks cmd
+        begin
+          cmd = replace_blocks cmd
+        rescue StandardError => e
+          $logger.debug "Exception catched while replacing blocks in the command: #{e.inspect}"
+          notify "Exception catched while replacing blocks in the command: #{e.inspect}"
+          cmd = ''
+        end
         $logger.debug "CMD: #{cmd}"
         unless cmd.empty?
           proc_string_item item
@@ -117,6 +136,7 @@ module RMenu
         begin
           item.value.call self
         rescue StandardError => e
+          notify "Exception catched: #{e.inspect}"
           $logger.debug "Exception catched: #{e.inspect}"
         end
       end
@@ -191,10 +211,7 @@ module RMenu
       if md = item.value.match(/^:conf\s*(.*)$/)
         if md[1] && !md[1].empty?
           val = config[md[1].to_sym]
-          picker = DMenuWrapper.new config
-          picker.prompt = "CONFIG[#{md[1]}]"
-          picker.items = [ Item.new(val, val) ]
-          item = picker.get_item
+          item = pick_item "Config[#{md[1]}]", [ Item.new(val,val)]
           config[md[1].to_sym] = item.value
           $logger.debug "CONF #{config.inspect}"
         else
@@ -216,10 +233,7 @@ module RMenu
         end
       elsif md = item.value.match(/^:delete/)
         $logger.debug ":delete command called"
-        picker = DMenuWrapper.new config
-        picker.prompt = "Delete item:"
-        picker.items = items
-        item = picker.get_item
+        item = pick_item "Delete item", items
         $logger.debug "indexed item = #{item.inspect}"
         items.delete item
         items.uniq!
