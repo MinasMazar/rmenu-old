@@ -1,4 +1,11 @@
 module RMenu
+
+  class ::Object
+    def object_methods
+      self.methods - self.class.ancestors.first.methods
+    end
+  end
+
   module GettersAndSetters
 
     def attr_getter(*args)

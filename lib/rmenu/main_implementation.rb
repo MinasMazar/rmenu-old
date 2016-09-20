@@ -16,13 +16,14 @@ module RMenu
       @config[:waker_io] = File.expand_path(@config[:waker_io])
       unless File.exists? @config[:items_file]
         items_file = File.new @config[:items_file], "w"
-        items_file.write YAML.dump({})
+        items_file.write YAML.dump([])
         items_file.close
       end
       unless File.exists? @config[:waker_io]
         waker_io = File.new @config[:waker_io], "w"
         waker_io.close
       end
+      @config[:locale] ||= "it"
       @waker_io = @config[:waker_io]
       self.items = build_items
     end
@@ -62,8 +63,7 @@ module RMenu
     end
 
     def build_items
-      item =  [ Item.parse("top -d { 3 * 2 }; #TOPTERM") ] || []
-      self.items = item + rmenu_items + load_items
+      self.items = ( rmenu_items + load_items ).uniq
     end
 
     def load_items
@@ -71,7 +71,20 @@ module RMenu
     end
 
     def save_items
-      File.write config[:items_file], YAML.dump(items)
+      items_to_save = items.select { |i| !i.options[:virtual] }
+      File.write config[:items_file], YAML.dump(items_to_save)
+    end
+
+    def add_item
+      dialog = DMenuWrapper.new config
+      dialog.prompt = "Add Item"
+      dialog.items = [ Item.format!(":add ", ":add ")]
+      item = dialog.get_item
+      call item
+    end
+
+    def delete_item
+      call Item.new(":delete", ":delete")
     end
 
     def call(item)
@@ -93,7 +106,6 @@ module RMenu
         unless cmd.empty?
           proc_string_item item
         end
-
       elsif item.value.is_a? Array
         submenu = DMenuWrapper.new config
         submenu.prompt = item.key
@@ -102,7 +114,11 @@ module RMenu
         call item
 
       elsif item.value.is_a? Proc
-        item.value.call self
+        begin
+          item.value.call self
+        rescue StandardError => e
+          $logger.debug "Exception catched: #{e.inspect}"
+        end
       end
 
     end
@@ -111,11 +127,43 @@ module RMenu
 
     def rmenu_items
       [ Item.format!(" **RMenu Commands**", [
-                       Item.format!("Config", :conf),
-                       Item.format!("Quit", :stop),
-                       Item.format!("Reload Config", :load_config)
-                     ])
+        Item.format!("Add Item", :add_item),
+        Item.format!("Delete Item", :delete_item),
+        Item.format!("Config", :conf),
+        Item.format!("Quit", :stop),
+        Item.format!("Reload Config", :load_config),
+        Item.format!("Save Items", :save_items),
+        Item.format!("Load Items", :load_items)
+      ], virtual: true)
       ]
+    end
+
+    def apps_items
+        $logger.debug "Building items from /usr/share/applications desktop files"
+        items = Dir["/usr/share/applications/*.desktop"].map do |e|
+          $logger.debug "Parsing #{e}.."
+          File.readlines(e).select { |l| l =~ /^(Exec|Name|Generic Name|Categories)(\[\w+\])?=/ if l.valid_encoding? }.map do |l|
+            if md = l.match(/(.+?)=(.+)/)
+              if md[1].match /(.+?)\[(\w+)\]/
+                { "#{$1.downcase}_#{$2}".to_sym => md[2] }
+              else
+                { md[1].downcase.to_sym => md[2] }
+              end
+            end
+          end.compact.reduce { |h,i| h.merge i }
+        end
+        items.uniq! { |i| i[:name] }.map! do |h|
+          locale_name = h[ "name_#{config[:locale]}".to_sym ] || h[:name]
+          categories = h[:categories] && h[:categories].split(";") || []
+          Item.format! config[:locale], h[:exec], categories: categories
+        end
+        category_items = items.map do |i|
+          i.options[:categories]
+        end.flatten.compact.map do |cat|
+          $logger.debug "Parsing category #{cat}"
+          Item.format! cat, [ cat ] + items.find_all { |i| i.options[:categories].include? cat }
+        end
+        category_items + items
     end
 
     def replace_tokens(cmd)
@@ -161,7 +209,8 @@ module RMenu
           value = md[1]
           key = md[2] || value
           item = Item.format!(key, value)
-          items.unshift item
+          items.insert 1, item
+          items.uniq!
           save_items
           item
         end
@@ -173,6 +222,7 @@ module RMenu
         item = picker.get_item
         $logger.debug "indexed item = #{item.inspect}"
         items.delete item
+        items.uniq!
         save_items
         item
       elsif md = item.value.match(/^http(s?):\/\//)

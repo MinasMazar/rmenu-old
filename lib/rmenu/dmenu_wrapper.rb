@@ -31,6 +31,11 @@ module RMenu
           value
         end
       end
+
+      def self.separator
+        Item.new "", nil
+      end
+
       # @return [#to_s] The key is what will be displayed in the menu.
       attr_accessor :key
       # @return [Object] The value can be any kind of object you wish to
@@ -45,6 +50,13 @@ module RMenu
       end
       def inspect
         "<#{self.class}: (#{key} => #{value})>"
+      end
+      def hash
+        value.hash
+      end
+      def eql?(o)
+        return false unless o.kind_of? Item
+        value == o.value
       end
     end
 
