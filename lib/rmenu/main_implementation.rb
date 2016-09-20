@@ -114,12 +114,9 @@ module RMenu
         end
 
       elsif item.value.is_a? String
-        cmd = item.value
-        cmd = replace_tokens cmd
-        $logger.debug "CMD: #{cmd}"
-        unless cmd.empty?
-          proc_string_item item
-        end
+        return if item.value && item.value.nil? || item.value.empty?
+        proc_string_item item
+
       elsif item.value.is_a? Array
         submenu = DMenuWrapper.new config
         submenu.prompt = item.key
@@ -188,8 +185,9 @@ module RMenu
         break unless md[1] || md[2]
         picker.prompt = md[2]
         input = picker.get_item
-        cmd_replaced.sub!(md[0], "\"#{input.value}\"")
+        cmd_replaced.sub!(md[0], input.value)
       end
+      $logger.debug "Command interpolated with input tokens: #{cmd_replaced}"
       cmd_replaced
     end
 
@@ -206,6 +204,8 @@ module RMenu
         notify "Exception catched while replacing blocks in the command: #{e.inspect}"
         cmd = nil
       end
+      $logger.debug "Command interpolated with eval blocks: #{cmd_replaced}"
+      cmd_replaced
     end
 
     def proc_string_item(item)
@@ -243,9 +243,9 @@ module RMenu
       else
         cmd = item.value
         cmd = replace_tokens cmd
-        $logger.debug "Command interpolated with input tokens: #{cmd}"
+        return if cmd && cmd.nil? || cmd.empty?
         cmd = replace_blocks cmd
-        $logger.debug "Command interpolated with eval blocks: #{cmd}"
+        return if cmd && cmd.nil? || cmd.empty?
         if md = cmd.match(/^http(s?):\/\//)
           system_exec config[:web_browser], cmd
         elsif md = cmd.match(/(.+);$/)
