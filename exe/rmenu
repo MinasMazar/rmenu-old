@@ -1,16 +1,53 @@
 require "rmenu"
 require "thor"
+require "mkfifo"
 
 module RMenu
   class CLI < Thor
 
-    DEFAULT_CONFIG_FILE = File.expand_path(".rmenu.yml", "~")
+    DEFAULT_CONFIG = {
+      :config_file => File.expand_path(".rmenu.yml", "~"),
+      :items_file => File.expand_path(".rmenu_items.yml", "~"),
+      :waker_io => File.expand_path(".rmenu_waker", "~")
+    }
 
-    class_option :config, :default => DEFAULT_CONFIG_FILE
+    class_option :config, :default => DEFAULT_CONFIG[:config_file]
+
+    attr_accessor :config
+
+    no_commands do
+
+      def create_rmenu_waker_if_not_present
+        unless File.exists? config[:waker_io]
+          File.mkfifo config[:waker_io]
+        end
+      end
+
+      def create_rmenu_config_if_not_present
+        self.config[:config_file] = options["config"]
+        unless File.exists? config[:config_file]
+          dmenu_deafult = DEFAULT_CONFIG.merge Rmenu::DMenuWrapper.new {}
+          File.write config[:config_file], YAML.dump(dmenu_default.config)
+        end
+      end
+
+      def create_items_file_if_not_present
+        unless File.exists? config[:items_file]
+          items_file = File.new config[:items_file], "w"
+          items_file.write YAML.dump([])
+          items_file.close
+        end
+      end
+
+    end
 
     desc "start", "Start rmenu instance in background"
     def start
-      rmenu_instance = RMenu::Main.new :config_file => options[:config]
+      self.config = DEFAULT_CONFIG
+      create_rmenu_config_if_not_present
+      create_rmenu_waker_if_not_present
+      create_items_file_if_not_present
+      rmenu_instance = RMenu::Main.new config
       rmenu_instance.start
     end
   end

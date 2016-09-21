@@ -3,28 +3,18 @@ require "rmenu/dmenu_wrapper"
 module RMenu
   class Main < DMenuWrapper
 
+    attr_accessor :config_file
     attr_accessor :config
     attr_accessor :dmenu_thread_flag
     attr_accessor :dmenu_thread
 
     include Utils
- 
+
     def initialize(params = {})
-      @config_file = (params[:config_file] || DEFAULT_CONFIG_FILE)
+      @config_file = params[:config_file]
       load_config
       @config.merge! params
       super @config
-      @config[:items_file] = File.expand_path(@config[:items_file])
-      @config[:waker_io] = File.expand_path(@config[:waker_io])
-      unless File.exists? @config[:items_file]
-        items_file = File.new @config[:items_file], "w"
-        items_file.write YAML.dump([])
-        items_file.close
-      end
-      unless File.exists? @config[:waker_io]
-        waker_io = File.new @config[:waker_io], "w"
-        waker_io.close
-      end
       @config[:locale] ||= "it"
       @waker_io = @config[:waker_io]
       self.items = build_items
