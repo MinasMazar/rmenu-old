@@ -54,8 +54,17 @@ module RMenu
       File.write @config_file, YAML.dump(@config)
     end
 
-    def build_items
-      self.items = ( rmenu_items + load_items ).uniq
+    def build_items(rebuild = false)
+      self.items = []
+      # Rebuild application items (XDG .desktop directory)
+      self.items += apps_items if rebuild
+      # Tails Rmenu commands into a submenu
+      self.items += rmenu_items.uniq
+      # Load saved items
+      self.items += load_items.uniq
+      # Tails Rmenu commands to the root of items
+      self.items += rmenu_items[0].value.uniq.flatten
+      self.items
     end
 
     def load_items
@@ -113,13 +122,9 @@ module RMenu
         submenu.items = item.value
         item = submenu.get_item
         call item
-
       elsif item.value.is_a? Proc
-        begin
+        catch_and_notify_exception do
           item.value.call self
-        rescue StandardError => e
-          notify "Exception catched: #{e.inspect}"
-          $logger.debug "Exception catched: #{e.inspect}"
         end
       end
 
@@ -141,31 +146,20 @@ module RMenu
     end
 
     def apps_items
-        $logger.debug "Building items from /usr/share/applications desktop files"
-        items = Dir["/usr/share/applications/*.desktop"].map do |e|
-          $logger.debug "Parsing #{e}.."
-          File.readlines(e).select { |l| l =~ /^(Exec|Name|Generic Name|Categories)(\[\w+\])?=/ if l.valid_encoding? }.map do |l|
-            if md = l.match(/(.+?)=(.+)/)
-              if md[1].match /(.+?)\[(\w+)\]/
-                { "#{$1.downcase}_#{$2}".to_sym => md[2] }
-              else
-                { md[1].downcase.to_sym => md[2] }
-              end
-            end
-          end.compact.reduce { |h,i| h.merge i }
+      $logger.debug "Building items from /usr/share/applications desktop files"
+      items = Dir["/usr/share/applications/*.desktop"].map do |e|
+        $logger.debug "Parsing #{e}.."
+        item = {}
+        File.readlines(e).each do |l|
+          if md = l.match(/(Exec|Name)\s*=\s*(.+)/i)
+            item[md[1].downcase.to_sym] = md[2].to_s
+          end
         end
-        items.uniq! { |i| i[:name] }.map! do |h|
-          locale_name = h[ "name_#{config[:locale]}".to_sym ] || h[:name]
-          categories = h[:categories] && h[:categories].split(";") || []
-          Item.format! config[:locale], h[:exec], categories: categories
+        unless item[:exec] && item[:exec].empty? && item[:name] && item[:name].empty?
+          Item.format! item[:name], item[:exec]
         end
-        category_items = items.map do |i|
-          i.options[:categories]
-        end.flatten.compact.map do |cat|
-          $logger.debug "Parsing category #{cat}"
-          Item.format! cat, [ cat ] + items.find_all { |i| i.options[:categories].include? cat }
-        end
-        category_items + items
+      end
+      items.compact.uniq
     end
 
     def replace_tokens(cmd)
@@ -183,16 +177,12 @@ module RMenu
 
     def replace_blocks(cmd)
       cmd_replaced = cmd
-      begin
+      catch_and_notify_exception do
         while md = cmd.match(/(\{([^\{\}]+?)\})/)
           break unless md[1] || md[2]
-          cmd_replaced.sub!(md[0], self.instance_eval(md[2]).to_s)
+          cmd_replaced.sub!(md[0], self.instance_eval(md[2]).strip.to_s)
         end
         cmd_replaced
-      rescue StandardError => e
-        $logger.debug "Exception catched while replacing blocks in the command: #{e.inspect}"
-        notify "Exception catched while replacing blocks in the command: #{e.inspect}"
-        cmd = nil
       end
       $logger.debug "Command interpolated with eval blocks: #{cmd_replaced}"
       cmd_replaced
@@ -230,6 +220,10 @@ module RMenu
         items.uniq!
         save_items
         item
+      elsif md = item.value.match(/^:(.+)/)
+        catch_and_notify_exception do
+          self.instance_eval md[1].strip.to_s
+        end
       else
         cmd = item.value
         cmd = replace_tokens cmd
@@ -237,7 +231,7 @@ module RMenu
         cmd = replace_blocks cmd
         return if cmd && cmd.nil? || cmd.empty?
         if md = cmd.match(/^http(s?):\/\//)
-          system_exec config[:web_browser], cmd
+          system_exec config[:web_browser], "\"", cmd, "\""
         elsif md = cmd.match(/(.+);$/)
           system_exec config[:terminal], "-e", "\"", cmd, "\""
         else
@@ -250,27 +244,30 @@ module RMenu
       cmd << "&"
       cmd = cmd.join " "
       $logger.debug "RMenu.system_exec: #{cmd}"
-      begin
+      catch_and_notify_exception do
         system cmd
-      rescue Exception => e
-        $logger.debug "RMenu.system_exec error: #{e.inspect}"
-        @notifier.notify e.inspect if @notifier.respond_to? :notify
       end
     end
 
     def system_exec_and_get_output(*cmd)
       cmd = cmd.join " "
       $logger.debug "RMenu.system_exec: #{cmd}"
-      begin
+      catch_and_notify_exception "RMenu.system_exec error: #{e.inspect}" do
         `#{cmd} &`
-      rescue Exception => e
-        $logger.debug "RMenu.system_exec error: #{e.inspect}"
-        @notifier.notify e.inspect if @notifier.respond_to? :notify
       end
     end
 
     def current_directory
       File.expand_path "~"
+    end
+
+    def catch_and_notify_exception(msg = "")
+      begin
+        yield
+      rescue StandardError => e
+        $logger.debug "Exception catched[#{msg}] #{e.inspect} at #{e.backtrace.join("\n")}"
+        notify "Exception catched[#{msg}] #{e.inspect}"
+      end
     end
 
   end
