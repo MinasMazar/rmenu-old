@@ -156,7 +156,7 @@ module RMenu
           end
         end
         unless item[:exec] && item[:exec].empty? && item[:name] && item[:name].empty?
-          Item.format! item[:name], item[:exec]
+          Item.format! "#{item[:name]} (#{item[:exec]})", item[:exec]
         end
       end
       items.compact.uniq
