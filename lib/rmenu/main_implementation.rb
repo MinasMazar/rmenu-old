@@ -224,19 +224,24 @@ module RMenu
         catch_and_notify_exception do
           self.instance_eval md[1].strip.to_s
         end
+      elsif md = item.value.match(/^!\s*(.+)/)
+        exec_string md[1]
       else
-        cmd = item.value
-        cmd = replace_tokens cmd
-        return if cmd && cmd.nil? || cmd.empty?
-        cmd = replace_blocks cmd
-        return if cmd && cmd.nil? || cmd.empty?
-        if md = cmd.match(/^http(s?):\/\//)
-          system_exec config[:web_browser], "\"", cmd, "\""
-        elsif md = cmd.match(/(.+);$/)
-          system_exec config[:terminal], "-e", "\"", cmd, "\""
-        else
-          system_exec cmd
-        end
+        exec_string item.value
+      end
+    end
+
+    def exec_string(cmd)
+      cmd = replace_tokens cmd
+      return if cmd && cmd.nil? || cmd.empty?
+      cmd = replace_blocks cmd
+      return if cmd && cmd.nil? || cmd.empty?
+      if md = cmd.match(/^http(s?):\/\//)
+        system_exec config[:web_browser], "\"", cmd, "\""
+      elsif md = cmd.match(/(.+);$/)
+        system_exec config[:terminal], "-e", "\"", cmd, "\""
+      else
+        system_exec cmd
       end
     end
 
