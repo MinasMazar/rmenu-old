@@ -238,8 +238,8 @@ module RMenu
       return if cmd && cmd.nil? || cmd.empty?
       if md = cmd.match(/^http(s?):\/\//)
         system_exec config[:web_browser], "\"", cmd, "\""
-      elsif md = cmd.match(/(.+);$/)
-        system_exec config[:terminal], "-e", "\"", cmd, "\""
+      elsif md = cmd.strip.match(/(.+);$/)
+        system_exec config[:terminal], "\"", md[1], "\""
       else
         system_exec cmd
       end
