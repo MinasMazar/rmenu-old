@@ -64,6 +64,7 @@ module RMenu
       self.items += load_items.uniq
       # Tails Rmenu commands to the root of items
       self.items += rmenu_items[0].value.uniq.flatten
+      self.items.uniq!
       self.items
     end
 
@@ -134,13 +135,14 @@ module RMenu
 
     def rmenu_items
       [ Item.format!(" **RMenu Commands**", [
-        Item.format!("Add Item", :add_item),
-        Item.format!("Delete Item", :delete_item),
-        Item.format!("Config", :conf),
-        Item.format!("Quit", :stop),
-        Item.format!("Reload Config", :load_config),
-        Item.format!("Save Items", :save_items),
-        Item.format!("Load Items", :load_items)
+        Item.format!("Add Item", :add_item, virtual: true),
+        Item.format!("Delete Item", :delete_item, virtual: true),
+        Item.format!("Config", :conf, virtual: true),
+        Item.format!("Quit", :stop, virtual: true),
+        Item.format!("Save config", :save_config, virtual: true),
+        Item.format!("Reload config", :load_config, virtual: true),
+        Item.format!("Save Items", :save_items, virtual: true),
+        Item.format!("Load Items", :load_items, virtual: true)
       ], virtual: true)
       ]
     end
@@ -237,7 +239,7 @@ module RMenu
       cmd = replace_blocks cmd
       return if cmd && cmd.nil? || cmd.empty?
       if md = cmd.match(/^http(s?):\/\//)
-        system_exec config[:web_browser], "\"", cmd, "\""
+        system_exec config[:web_browser], "\"", utils.str2url(cmd.strip), "\""
       elsif md = cmd.strip.match(/(.+);$/)
         system_exec config[:terminal], "\"", md[1], "\""
       else
