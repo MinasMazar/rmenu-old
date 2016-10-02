@@ -27,6 +27,7 @@ module RMenu
           $logger.info "#{self.class} is ready and listening on #{@waker_io}"
           wake_code = IO.read(@waker_io).chomp.strip
           $logger.debug "Received wake code <#{wake_code}>"
+          set_params config.merge items: self.items
           item = get_item
           results = call item
           $logger.debug "PROCESS_CMD RESULTS: #{results.inspect}"

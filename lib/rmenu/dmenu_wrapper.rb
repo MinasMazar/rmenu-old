@@ -85,8 +85,8 @@ module RMenu
     # @return [String] Defines a prompt to be displayed before the input area.
     attr_getter_and_setter :prompt
 
-    def initialize(args = {})
-      args = args.reject { |m| !respond_to? m }
+    def set_params(params = {})
+      params = params.reject { |m| !respond_to? m }
       @items               = []
       @position            = :top
       @case_insensitive    = false
@@ -98,12 +98,16 @@ module RMenu
       @selected_foreground = nil
       @prompt              = nil
       @other_params        = ""
-      args.each do |a, v|
+      params.each do |a, v|
         self.send "#{a}=", v
       end
       if block_given?
         instance_eval &Proc.new
       end
+    end
+
+    def initialize(params = {})
+      set_params params
     end
 
     def add_item(item)
