@@ -167,28 +167,28 @@ module RMenu
 
     def replace_tokens(cmd)
       picker = DMenuWrapper.new config
-      cmd_replaced = cmd
-      while md = cmd.match(/(__(.+)__)/)
+      replaced_cmd = cmd.clone
+      while md = replaced_cmd.match(/(__(.+)__)/)
         break unless md[1] || md[2]
         picker.prompt = md[2]
         input = picker.get_item
-        cmd_replaced.sub!(md[0], input.value)
+        replaced_cmd.sub!(md[0], input.value)
       end
-      $logger.debug "Command interpolated with input tokens: #{cmd_replaced}"
-      cmd_replaced
+      $logger.debug "Command interpolated with input tokens: #{replaced_cmd}"
+      replaced_cmd
     end
 
     def replace_blocks(cmd)
-      cmd_replaced = cmd
+      replaced_cmd = cmd.clone
       catch_and_notify_exception do
-        while md = cmd.match(/(\{([^\{\}]+?)\})/)
+        while md = replaced_cmd.match(/(\{([^\{\}]+?)\})/)
           break unless md[1] || md[2]
-          cmd_replaced.sub!(md[0], self.instance_eval(md[2]).strip.to_s)
+          replaced_cmd.sub!(md[0], self.instance_eval(md[2]).strip.to_s)
         end
-        cmd_replaced
+        replaced_cmd
       end
-      $logger.debug "Command interpolated with eval blocks: #{cmd_replaced}"
-      cmd_replaced
+      $logger.debug "Command interpolated with eval blocks: #{replaced_cmd}"
+      replaced_cmd
     end
 
     def proc_string_item(item)
@@ -235,16 +235,16 @@ module RMenu
     end
 
     def exec_string(cmd)
-      cmd = replace_tokens cmd
-      return if cmd && cmd.nil? || cmd.empty?
-      cmd = replace_blocks cmd
-      return if cmd && cmd.nil? || cmd.empty?
-      if md = cmd.match(/^http(s?):\/\//)
-        system_exec config[:web_browser], "\"", utils.str2url(cmd.strip), "\""
-      elsif md = cmd.strip.match(/(.+);$/)
+      replaced_cmd = replace_tokens cmd
+      return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
+      replaced_cmd = replace_blocks replaced_cmd
+      return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
+      if md = replaced_cmd.match(/^http(s?):\/\//)
+        system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
+      elsif md = replaced_cmd.strip.match(/(.+);$/)
         system_exec config[:terminal], "\"", md[1], "\""
       else
-        system_exec cmd
+        system_exec replaced_cmd
       end
     end
 
