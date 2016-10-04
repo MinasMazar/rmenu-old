@@ -78,15 +78,29 @@ module RMenu
       File.write config[:items_file], YAML.dump(items_to_save)
     end
 
-    def add_item
+    def add_item(item)
+      items.insert 1, item
+      items.uniq!
+      save_items
+      item
+    end
+
+    def delete_item(item)
+      items.delete item
+      items.uniq!
+      save_items
+      item
+    end
+
+    def create_item
       dialog = DMenuWrapper.new config
       dialog.prompt = "Add Item"
-      dialog.items = [ Item.format!(":add ", ":add ")]
       item = dialog.get_item
+      item.value = ":add #{item.value}"
       call item
     end
 
-    def delete_item
+    def destroy_item
       call Item.new(":delete", ":delete")
     end
 
@@ -136,8 +150,8 @@ module RMenu
 
     def rmenu_items
       [ Item.format!(" **RMenu Commands**", [
-        Item.format!("Add Item", :add_item, virtual: true),
-        Item.format!("Delete Item", :delete_item, virtual: true),
+        Item.format!("Create Item", :create_item, virtual: true),
+        Item.format!("Destroy Item", :destroy_item, virtual: true),
         Item.format!("Config", :conf, virtual: true),
         Item.format!("Quit", :stop, virtual: true),
         Item.format!("Save config", :save_config, virtual: true),
@@ -210,19 +224,13 @@ module RMenu
           value = md[1]
           key = md[2] || value
           item = Item.format!(key, value)
-          items.insert 1, item
-          items.uniq!
-          save_items
-          item
+          add_item item
         end
       elsif md = item.value.match(/^:delete/)
         $logger.debug ":delete command called"
         item = pick_item "Delete item", items
         $logger.debug "indexed item = #{item.inspect}"
-        items.delete item
-        items.uniq!
-        save_items
-        item
+        delete_item item
       elsif md = item.value.match(/^:(.+)/)
         catch_and_notify_exception do
           self.instance_eval md[1].strip.to_s
