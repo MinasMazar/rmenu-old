@@ -34,7 +34,12 @@ module RMenu
         end
       end
       begin
-        self.dmenu_thread.join
+        if block_given?
+          yield
+        else
+          self.dmenu_thread.join
+        end
+        stop
       rescue Interrupt
         $logger.info "Interrut catched...exiting."
         stop

@@ -1,5 +1,6 @@
 require "rmenu"
 require "thor"
+require "pry"
 require "mkfifo"
 
 module RMenu
@@ -39,17 +40,33 @@ module RMenu
         end
       end
 
+      def setup_config
+        self.config = DEFAULT_CONFIG
+        create_rmenu_config_if_not_present
+        create_rmenu_waker_if_not_present
+        create_items_file_if_not_present
+      end
+
+      def get_instance
+        rmenu_instance = RMenu::Main.new config
+      end
+
     end
 
     desc "start", "Start rmenu instance in background"
+    option :with_pry, type: :boolean, default: false, desc: "Start with an associated PRY session (must be launched from terminal!)"
     def start
-      self.config = DEFAULT_CONFIG
-      create_rmenu_config_if_not_present
-      create_rmenu_waker_if_not_present
-      create_items_file_if_not_present
-      rmenu_instance = RMenu::Main.new config
-      rmenu_instance.start
+      setup_config
+      rmenu_instance = get_instance
+      rmenu_instance.start do
+        if options[:with_pry]
+          rmenu_instance.pry
+        else
+          rmenu_instance.dmenu_thread.join
+        end
+      end
     end
+
   end
 end
 
