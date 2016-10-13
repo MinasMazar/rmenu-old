@@ -188,7 +188,7 @@ module RMenu
     def replace_tokens(cmd)
       picker = DMenuWrapper.new config
       replaced_cmd = cmd.clone
-      while md = replaced_cmd.match(/(__(.+)__)/)
+      while md = replaced_cmd.match(/(__(.+?)__)/)
         break unless md[1] || md[2]
         picker.prompt = md[2]
         input = picker.get_item
