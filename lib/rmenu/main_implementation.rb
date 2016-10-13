@@ -7,6 +7,7 @@ module RMenu
     attr_accessor :config
     attr_accessor :dmenu_thread_flag
     attr_accessor :dmenu_thread
+    attr_accessor :current_menu
 
     include Utils
 
@@ -28,6 +29,7 @@ module RMenu
           wake_code = IO.read(@waker_io).chomp.strip
           $logger.debug "Received wake code <#{wake_code}>"
           set_params config.merge items: self.items
+          self.current_menu = items
           item = get_item
           results = call item
           $logger.debug "PROCESS_CMD RESULTS: #{results.inspect}"
@@ -84,15 +86,15 @@ module RMenu
     end
 
     def add_item(item)
-      items.insert 1, item
-      items.uniq!
+      current_menu.insert 1, item
+      current_menu.uniq!
       save_items
       item
     end
 
     def delete_item(item)
-      items.delete item
-      items.uniq!
+      current_menu.delete item
+      current_menu.uniq!
       save_items
       item
     end
@@ -138,6 +140,7 @@ module RMenu
         proc_string_item item
 
       elsif item.value.is_a? Array
+        self.current_menu = item.value
         submenu = DMenuWrapper.new config
         submenu.prompt = item.key
         submenu.items = item.value
@@ -155,8 +158,6 @@ module RMenu
 
     def rmenu_items
       [ Item.format!(" **RMenu Commands**", [
-        Item.format!("Create Item", :create_item, virtual: true),
-        Item.format!("Destroy Item", :destroy_item, virtual: true),
         Item.format!("Config", :conf, virtual: true),
         Item.format!("Quit", :stop, virtual: true),
         Item.format!("Save config", :save_config, virtual: true),
@@ -233,7 +234,7 @@ module RMenu
         end
       elsif md = item.value.match(/^:delete/)
         $logger.debug ":delete command called"
-        item = pick_item "Delete item", items
+        item = pick_item "Delete item", current_menu
         $logger.debug "indexed item = #{item.inspect}"
         delete_item item
       elsif md = item.value.match(/^:(.+)/)
