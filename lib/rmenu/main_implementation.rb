@@ -66,10 +66,10 @@ module RMenu
       self.items = []
       # Rebuild application items (XDG .desktop directory)
       self.items += apps_items if rebuild
-      # Tails Rmenu commands into a submenu
-      self.items += rmenu_items.uniq
       # Load saved items
       self.items += load_items.uniq
+      # Rmenu commands into a submenu
+      self.items += rmenu_items.uniq
       # Tails Rmenu commands to the root of items
       self.items += rmenu_items[0].value.uniq.flatten
       self.items.uniq!
