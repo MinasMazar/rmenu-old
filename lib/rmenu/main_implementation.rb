@@ -49,6 +49,7 @@ module RMenu
     end
 
     def stop
+      save_items
       @dmenu_thread_flag = false
       sleep(1) && @dmenu_thread && @dmenu_thread.kill
     end
@@ -71,18 +72,18 @@ module RMenu
       # Rmenu commands into a submenu
       self.items += rmenu_items.uniq
       # Tails Rmenu commands to the root of items
-      self.items += rmenu_items[0].value.uniq.flatten
+      self.items += rmenu_items[0].value#.uniq.flatten
       self.items.uniq!
-      self.items
+      self.items = items.sort_by { |i| -1 * ( i.options[:picked] || 0 ) }
     end
 
     def load_items
-      YAML.load_file config[:items_file] || []
+      utils.load_items config[:items_file]
     end
 
     def save_items
-      items_to_save = items.select { |i| !i.options[:virtual] }
-      File.write config[:items_file], YAML.dump(items_to_save)
+      items_to_save = items.reject { |i| i.options[:virtual] }
+      utils.save_items items_to_save, config[:items_file]
     end
 
     def add_item(item)
@@ -126,6 +127,9 @@ module RMenu
 
     def call(item)
       $logger.debug "Selected #{item.inspect}"
+
+      item.options[:picked] ||= 0
+      item.options[:picked] += 1
 
       if item.value.is_a? Symbol
         if self.respond_to? item.value
@@ -229,7 +233,7 @@ module RMenu
         if md[1] && ( md = md[1].match(/(.+)\s*#\s*(.*)/) )
           value = md[1]
           key = md[2] || value
-          item = Item.format!(key, value)
+          item = Item.format!(key, value, picked: 0, user_defined: true)
           add_item item
         end
       elsif md = item.value.match(/^:delete/)
