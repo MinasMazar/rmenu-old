@@ -1,14 +1,26 @@
 module RMenu
   module Utils
 
-    attr_accessor :utils_inst
+    module Methods
 
-    def utils
-      self.utils_inst ||= Object.new.extend Utils
+      def load_items(items_file)
+        YAML.load_file(items_file) || []
+      end
+
+      def save_items(items, items_file)
+        File.write items_file, YAML.dump(items)
+      end
+
+      def str2url(str)
+        str.gsub /\s+/, "+"
+      end
+
     end
 
-    def str2url(str)
-      str.gsub /\s+/, "+"
+    @@utils_inst ||= Object.new.extend Methods
+
+    def utils
+      @@utils_inst
     end
 
   end

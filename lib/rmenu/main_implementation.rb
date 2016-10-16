@@ -233,7 +233,7 @@ module RMenu
         else
           picker = DMenuWrapper.new config
           picker.prompt = "CONFIG"
-          picker.items = config.map { |conf,val| Item.new(conf,":conf #{conf}") }
+          picker.items = config.map { |conf,v| Item.new(conf,":conf #{conf}") }
           item = picker.get_item
           call item
         end
