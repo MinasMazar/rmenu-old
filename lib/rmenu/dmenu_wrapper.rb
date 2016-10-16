@@ -49,7 +49,10 @@ module RMenu
         @options = options
       end
       def inspect
-        "<#{self.class}: (#{key} => #{value})>"
+        "<#{self.class}: (#{key} => #{value}), #{options.inspect}>"
+      end
+      def to_s
+        key.to_s
       end
       def hash
         value.hash
@@ -152,7 +155,7 @@ module RMenu
     def run__pipe_impl
       pipe = IO.popen(command, "w+")
       items.each do |item|
-        pipe.puts item.key.to_s
+        pipe.puts item.to_s
       end
 
       pipe.close_write
@@ -171,7 +174,7 @@ module RMenu
     end
 
     def run__sys_call_impl
-      i = items.map {|i| "#{i.key.to_s}" }
+      i = items.map {|i| "#{i.to_s}" }
       cmd = "echo -n \"#{i.join "\n"}\" | #{command.join " "} "
       value = `#{cmd}`
       $logger.debug  "Systemcall: #{cmd} => #{value}"

@@ -3,6 +3,14 @@ require "rmenu/dmenu_wrapper"
 module RMenu
   class Main < DMenuWrapper
 
+    # Reopen Item class and change items format
+    # class DMenuWrapper::Item
+    #   def to_s
+    #     value_s = value.is_a?(String) ? " (#{value}) " : ''
+    #     "#{key}#{value_s}[#{options[:picked] || 0}]"
+    #   end
+    # end
+
     attr_accessor :config_file
     attr_accessor :config
     attr_accessor :dmenu_thread_flag
