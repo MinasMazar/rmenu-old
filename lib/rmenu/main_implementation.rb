@@ -204,6 +204,7 @@ module RMenu
         break unless md[1] || md[2]
         picker.prompt = md[2]
         input = picker.get_item
+        return if input.value == "quit"
         replaced_cmd.sub!(md[0], input.value)
       end
       $logger.debug "Command interpolated with input tokens: #{replaced_cmd}"
@@ -215,7 +216,9 @@ module RMenu
       catch_and_notify_exception do
         while md = replaced_cmd.match(/(\{([^\{\}]+?)\})/)
           break unless md[1] || md[2]
-          replaced_cmd.sub!(md[0], self.instance_eval(md[2]).strip.to_s)
+          evaluated_string = self.instance_eval(md[2]).strip.to_s
+          return if evaluated_string == :quit
+          replaced_cmd.sub!(md[0], evaluated_string)
         end
         replaced_cmd
       end
