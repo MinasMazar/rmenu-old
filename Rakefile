@@ -8,8 +8,8 @@ Rake::TestTask.new(:test) do |t|
 end
 
 desc "Start Rmenu instance"
-task :start_rmenu do
+task :start do
   system "bundle exec ruby -rpry exe/rmenu start"
 end
 
-task :default => :start_rmenu
+task :default => :start
