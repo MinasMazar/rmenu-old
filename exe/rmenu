@@ -60,7 +60,7 @@ module RMenu
       end
 
       def get_instance
-        rmenu_instance = RMenu::Main.new config
+        rmenu_instance = RMenu::Profiles::Main.new config
       end
 
     end

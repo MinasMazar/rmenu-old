@@ -5,7 +5,7 @@ require "yaml"
 require "rmenu/version"
 require "rmenu/monkeypatch"
 require "rmenu/utils"
-require "rmenu/main_implementation"
+require "rmenu/profiles"
 
 module Rmenu
 end
