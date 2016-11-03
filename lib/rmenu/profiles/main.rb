@@ -4,6 +4,10 @@ module RMenu
 
     class Main < Base
 
+      def initialize(params = {})
+        super params
+      end
+
       def add_item(item)
         current_menu.insert 1, item
         current_menu.uniq!
@@ -44,7 +48,7 @@ module RMenu
         if field
           field = field.to_sym
           val = config[field]
-          item = pick "Config[#{field}]", [ Item.new(val,val)]
+          item = pick "Config[#{field}]: #{val}"
           $logger.debug "Config modified: config[:#{field}] #{val} -> #{item.value}"
           config[field] = item.value
         else
@@ -53,17 +57,13 @@ module RMenu
           picker.items = config.map { |conf,v| Item.new(conf, conf) }
           picker.lines = config.size
           item = picker.get_item
-          conf item.value
+          conf item.value unless item.value.empty?
         end
       end
 
       def add item_str = nil
-        if item_str && ( md = item_str.match(/(.+)\s*#\s*(.*)/) )
-          value = md[1]
-          key = md[2] || value
-          item = Item.format!(key, value, picked: 0, user_defined: true)
-          add_item item
-          end
+        item = Item.parse item_str
+        add_item item if item
       end
 
       def delete
@@ -95,7 +95,7 @@ module RMenu
         submenu << Item.format!("Load items", :load_items, virtual: true)
         submenu << Item.format!("Save items", :save_items, virtual: true)
         submenu << Item.format!("Quit RMenu", :stop, virtual: true)
-        menu << Item.format!(" **RMenu Commands**", submenu, virtual: true)
+        menu << Item.format!("RMenu", submenu, virtual: true)
         menu
       end
 

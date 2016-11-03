@@ -15,6 +15,7 @@ module RMenu
       attr_accessor :dmenu_thread_flag
       attr_accessor :dmenu_thread
       attr_accessor :current_menu
+      attr_accessor :current_item
 
       include Utils
 
@@ -25,7 +26,12 @@ module RMenu
         super @config
         @config[:locale] ||= "it"
         @waker_io = @config[:waker_io]
-        self.items = build_items
+        build_items
+      end
+
+      def prepare
+        set_params config.merge items: self.items
+        self.current_menu = items
       end
 
       def start
@@ -35,11 +41,10 @@ module RMenu
             $logger.info "#{self.class} is ready and listening on #{@waker_io}"
             wake_code = IO.read(@waker_io).chomp.strip
             $logger.debug "Received wake code <#{wake_code}>"
-            set_params config.merge items: self.items
-            self.current_menu = items
+            prepare
             item = get_item
             results = proc item
-            $logger.debug "PROCESS_CMD RESULTS: #{results.inspect}"
+            $logger.debug "Proc item returns #{results.inspect}"
           end
         end
         begin
@@ -76,18 +81,20 @@ module RMenu
         notifier.get_item
       end
 
-      def pick(prompt, items)
+      def pick(prompt, items = [])
         picker = DMenuWrapper.new config
         picker.prompt = prompt
         picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
-        item = picker.get_item
+        picker.get_item
+      end
+
+      def build_items
+        self.items = []
       end
 
       def proc(item)
-        $logger.debug "Selected #{item.inspect}"
-
-        item.options[:picked] ||= 0
-        item.options[:picked]  += 1
+        self.current_item = item
+        $logger.debug "Selected #{current_item.inspect}"
 
         if item.value.is_a? Symbol
           self.send item.value if self.respond_to? item.value
@@ -103,6 +110,7 @@ module RMenu
           submenu.items = item.value
           item = submenu.get_item
           proc item
+
         elsif item.value.is_a? Proc
           catch_and_notify_exception do
             item.value.call self
@@ -123,7 +131,7 @@ module RMenu
           end
         elsif md = str.match(/^!\s*(.+)/)
           exec_command md[1]
-        else
+        elsif !str.empty?
           exec_command str
         end
       end

@@ -12,17 +12,17 @@ module RMenu
           key = $3
           options[:term_exec] = true if $2
           value = $1
-        end
-        if key && value
           new key, value, options
+        else
+          new str, str, options
         end
       end
 
       def self.format!(key, value, options = {})
         if value.is_a? String
-          new "%#{key}", value, options
+          new "#{key}", value, options
         elsif value.is_a? Symbol
-          new ":#{key}", value, options
+          new "#{key}", value, options
         elsif value.is_a? Proc
           new "&#{key}", value, options
         elsif value.is_a? Array
@@ -214,7 +214,8 @@ module RMenu
       }
 
       h.each do |flag, value|
-        if value
+        value = value.to_s
+        if value && !value.empty?
           args << flag
           args << value
         end
