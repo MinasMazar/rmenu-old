@@ -88,6 +88,8 @@ module RMenu
     # @return [String] Defines a prompt to be displayed before the input area.
     attr_getter_and_setter :prompt
 
+    attr_getter_and_setter :x, :y, :width
+
     def set_params(params = {})
       params = params.reject { |m| !respond_to? m }
       @items               = []
@@ -202,17 +204,20 @@ module RMenu
       end
 
       h = {
-        "fn" => @font,
-        "nb" => @background,
-        "nf" => @foreground,
-        "sb" => @selected_background,
-        "sf" => @selected_foreground,
-        "p"  => @prompt,
+        "-fn" => @font,
+        "-nb" => @background,
+        "-nf" => @foreground,
+        "-sb" => @selected_background,
+        "-sf" => @selected_foreground,
+        "-p"  => @prompt,
+        "-x" => x,
+        "-y" => y,
+        "-w" => width,
       }
 
       h.each do |flag, value|
         if value
-          args << "-#{flag}"
+          args << flag
           args << value
         end
       end
