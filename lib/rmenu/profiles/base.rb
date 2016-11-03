@@ -38,7 +38,7 @@ module RMenu
             set_params config.merge items: self.items
             self.current_menu = items
             item = get_item
-            results = call item
+            results = proc item
             $logger.debug "PROCESS_CMD RESULTS: #{results.inspect}"
           end
         end
@@ -70,85 +70,31 @@ module RMenu
         File.write @config_file, YAML.dump(@config)
       end
 
-      def build_items(rebuild = false)
-        self.items = []
-        # Rebuild application items (XDG .desktop directory)
-        self.items += apps_items if rebuild
-        # Load saved items
-        self.items += load_items.uniq
-        # Rmenu commands into a submenu
-        self.items += rmenu_items.uniq
-        # Tails Rmenu commands to the root of items
-        self.items += rmenu_items[0].value#.uniq.flatten
-        self.items.uniq!
-        self.items = items.sort_by { |i| -1 * ( i.options[:picked] || 0 ) }
-      end
-
-      def load_items
-        utils.load_items config[:items_file]
-      end
-
-      def save_items
-        items_to_save = items.reject { |i| i.options[:virtual] }
-        utils.save_items items_to_save, config[:items_file]
-      end
-
-      def add_item(item)
-        current_menu.insert 1, item
-        current_menu.uniq!
-        save_items
-        item
-      end
-
-      def delete_item(item)
-        current_menu.delete item
-        current_menu.uniq!
-        save_items
-        item
-      end
-
-      def create_item
-        dialog = DMenuWrapper.new config
-        dialog.prompt = "Add Item"
-        item = dialog.get_item
-        item.value = ":add #{item.value}"
-        call item
-      end
-
-      def destroy_item
-        call Item.new(":delete", ":delete")
-      end
-
       def notify(msg)
         notifier = DMenuWrapper.new config
         notifier.prompt = msg
         notifier.get_item
       end
 
-      def pick_item(prompt, items)
+      def pick(prompt, items)
         picker = DMenuWrapper.new config
         picker.prompt = prompt
         picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
         item = picker.get_item
       end
 
-      def call(item)
+      def proc(item)
         $logger.debug "Selected #{item.inspect}"
 
         item.options[:picked] ||= 0
-        item.options[:picked] += 1
+        item.options[:picked]  += 1
 
         if item.value.is_a? Symbol
-          if self.respond_to? item.value
-            self.send item.value
-          else
-            item.value = ":" + item.value.to_s
-            proc_string_item item
-          end
+          self.send item.value if self.respond_to? item.value
 
         elsif item.value.is_a? String
           return if item.value && item.value.nil? || item.value.empty?
-          proc_string_item item
+          proc_string item.value
 
         elsif item.value.is_a? Array
           self.current_menu = item.value
@@ -156,53 +102,51 @@ module RMenu
           submenu.prompt = item.key
           submenu.items = item.value
           item = submenu.get_item
-          call item
+          proc item
         elsif item.value.is_a? Proc
           catch_and_notify_exception do
             item.value.call self
           end
         end
-
       end
 
-      private
-
-      def rmenu_items
-        [ Item.format!(" **RMenu Commands**", [
-          Item.format!("Config", :conf, virtual: true),
-          Item.format!("Quit", :stop, virtual: true),
-          Item.format!("Save config", :save_config, virtual: true),
-          Item.format!("Reload config", :load_config, virtual: true),
-          Item.format!("Save Items", :save_items, virtual: true),
-          Item.format!("Load Items", :load_items, virtual: true)
-        ], virtual: true)
-        ]
-      end
-
-      def apps_items
-        $logger.debug "Building items from /usr/share/applications desktop files"
-        items = Dir["/usr/share/applications/*.desktop"].map do |e|
-          $logger.debug "Parsing #{e}.."
-          item = {}
-          File.readlines(e).each do |l|
-            if md = l.match(/(Exec|Name)\s*=\s*(.+)/i)
-              item[md[1].downcase.to_sym] = md[2].to_s
+      def proc_string(str)
+        if md = str.match(/^:\s*(.+)/)
+          catch_and_notify_exception do
+            meth = md[1].split[0]
+            args = md[1].split[1..-1]
+            if args.any?
+              send meth, *args.join(" ")
+            else
+              send meth
             end
           end
-          unless item[:exec] && item[:exec].empty? && item[:name] && item[:name].empty?
-            Item.format! "#{item[:name]} (#{item[:exec]})", item[:exec]
-          end
+        elsif md = str.match(/^!\s*(.+)/)
+          exec_command md[1]
+        else
+          exec_command str
         end
-        items.compact.uniq
+      end
+
+      def exec_command(cmd)
+        replaced_cmd = replace_tokens cmd
+        return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
+        replaced_cmd = replace_blocks replaced_cmd
+        return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
+        if md = replaced_cmd.match(/^http(s?):\/\//)
+          system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
+        elsif md = replaced_cmd.strip.match(/(.+);$/)
+          system_exec config[:terminal], md[1].strip
+        else
+          system_exec replaced_cmd
+        end
       end
 
       def replace_tokens(cmd)
-        picker = DMenuWrapper.new config
         replaced_cmd = cmd.clone
         while md = replaced_cmd.match(/(__(.+?)__)/)
           break unless md[1] || md[2]
-          picker.prompt = md[2]
-          input = picker.get_item
+          input = pick md[2]
           return if input.value == "quit"
           replaced_cmd.sub!(md[0], input.value)
         end
@@ -215,7 +159,7 @@ module RMenu
         catch_and_notify_exception do
           while md = replaced_cmd.match(/(\{([^\{\}]+?)\})/)
             break unless md[1] || md[2]
-            evaluated_string = self.instance_eval(md[2]).strip.to_s
+            evaluated_string = self.instance_eval(md[2]).to_s
             return if evaluated_string == :quit
             replaced_cmd.sub!(md[0], evaluated_string)
           end
@@ -223,57 +167,6 @@ module RMenu
         end
         $logger.debug "Command interpolated with eval blocks: #{replaced_cmd}"
         replaced_cmd
-      end
-
-      def proc_string_item(item)
-        if md = item.value.match(/^:config?\s*(.*)$/)
-          if md[1] && !md[1].empty?
-            val = config[md[1].to_sym]
-            item = pick_item "Config[#{md[1]}]", [ Item.new(val,val)]
-            config[md[1].to_sym] = item.value
-            $logger.debug "CONF #{config.inspect}"
-          else
-            picker = DMenuWrapper.new config
-            picker.prompt = "CONFIG"
-            picker.items = config.map { |conf,v| Item.new(conf,":conf #{conf}") }
-            item = picker.get_item
-            call item
-          end
-        elsif md = item.value.match(/^:add\s+(.+)/)
-          if md[1] && ( md = md[1].match(/(.+)\s*#\s*(.*)/) )
-            value = md[1]
-            key = md[2] || value
-            item = Item.format!(key, value, picked: 0, user_defined: true)
-            add_item item
-          end
-        elsif md = item.value.match(/^:delete/)
-          $logger.debug ":delete command called"
-          item = pick_item "Delete item", current_menu
-          $logger.debug "indexed item = #{item.inspect}"
-          delete_item item
-        elsif md = item.value.match(/^:(.+)/)
-          catch_and_notify_exception do
-            self.instance_eval md[1].strip.to_s
-          end
-        elsif md = item.value.match(/^!\s*(.+)/)
-          exec_string md[1]
-        else
-          exec_string item.value
-        end
-      end
-
-      def exec_string(cmd)
-        replaced_cmd = replace_tokens cmd
-        return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
-        replaced_cmd = replace_blocks replaced_cmd
-        return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
-        if md = replaced_cmd.match(/^http(s?):\/\//)
-          system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
-        elsif md = replaced_cmd.strip.match(/(.+);$/)
-          system_exec config[:terminal], md[1].strip
-        else
-          system_exec replaced_cmd
-        end
       end
 
       def system_exec(*cmd)

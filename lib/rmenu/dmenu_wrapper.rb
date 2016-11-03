@@ -20,15 +20,17 @@ module RMenu
 
       def self.format!(key, value, options = {})
         if value.is_a? String
-          new "#{key}", value, options
+          new "%#{key}", value, options
         elsif value.is_a? Symbol
-          new ": #{key}", value, options
+          new ":#{key}", value, options
         elsif value.is_a? Proc
-          new "& #{key}", value, options
+          new "&#{key}", value, options
         elsif value.is_a? Array
-          new "> #{key}", value, options
+          new ">#{key}", value, options
         elsif value.is_a? Item
           value
+        else
+          new key, value, options
         end
       end
 
@@ -113,10 +115,6 @@ module RMenu
 
     def initialize(params = {})
       set_params params
-    end
-
-    def add_item(item)
-      @items << item
     end
 
     def items=(items)
