@@ -3,6 +3,12 @@ require "rmenu/utils"
 module RMenu
   class DMenuWrapper
 
+    BACKENDS = {
+
+      :dmenu => [ "dmenu" ],
+      :rofi  => [ "rofi", "-dmenu", "-show" ]
+    }
+
     class Item
       def self.parse(str)
         key = nil
@@ -65,6 +71,20 @@ module RMenu
       end
     end
 
+    def backend
+      BACKENDS[@backend]
+    end
+
+    def backend=(backend)
+      if backend.is_a? Hash
+        BACKENDS.merge! backend
+        backend = backend.key.first
+      end
+      backend = backend.to_sym
+      raise ArgumentError.new unless BACKENDS.include? backend
+      @backend = backend.to_sym
+    end
+
     extend RMenu::GettersAndSetters
 
     # @return [Array<#to_s, Item>] Items to display in the menu. Items
@@ -94,6 +114,7 @@ module RMenu
 
     def set_params(params = {})
       params = params.reject { |m| !respond_to? m }
+      @backend             = :dmenu
       @items               = []
       @position            = :top
       @case_insensitive    = false
@@ -185,7 +206,7 @@ module RMenu
     end
 
     def command
-      args = ["dmenu"]
+      args = backend
 
       if @position == :bottom
         args << "-b"
