@@ -22,8 +22,8 @@ module RMenu
         item
       end
 
-      def build_items(rebuild = false)
-        self.items = []
+      def build_items(items = [], rebuild = false)
+        super items
         # Rebuild application items (XDG .desktop directory)
         self.items += utils.build_desktop_application_menu if rebuild
         # Load saved items

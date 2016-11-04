@@ -29,6 +29,10 @@ module RMenu
         build_items
       end
 
+      def build_items(items = [])
+        self.items = items
+      end
+
       def prepare
         set_params config.merge items: self.items
         self.current_menu = items
