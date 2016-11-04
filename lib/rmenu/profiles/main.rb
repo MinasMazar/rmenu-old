@@ -99,6 +99,17 @@ module RMenu
         menu
       end
 
+      def proc_string(str)
+        if md = str.match(/(.+)\s*#\s*(.+)/)
+          cmd, label = md[1], md[2]
+          item = Item.format!(label, cmd, user_defined: true)
+          add_item item
+        else
+          cmd = str
+        end
+        super cmd
+      end
+
     end
   end
 end

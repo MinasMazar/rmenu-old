@@ -138,9 +138,9 @@ module RMenu
 
       def exec_command(cmd)
         replaced_cmd = replace_tokens cmd
-        return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
+        return unless replaced_cmd
         replaced_cmd = replace_blocks replaced_cmd
-        return if replaced_cmd && replaced_cmd.nil? || replaced_cmd.empty?
+        return unless replaced_cmd
         if md = replaced_cmd.match(/^http(s?):\/\//)
           system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
         elsif md = replaced_cmd.strip.match(/(.+);$/)
@@ -180,7 +180,7 @@ module RMenu
       def system_exec(*cmd)
         cmd << "&"
         cmd = cmd.join " "
-        $logger.debug "RMenu.system_exec: #{cmd}"
+        $logger.debug "RMenu.system_exec: [#{cmd}]"
         catch_and_notify_exception do
           system cmd
         end
