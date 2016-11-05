@@ -65,8 +65,6 @@ module RMenu
       end
     end
 
-    extend RMenu::GettersAndSetters
-
     # @return [Array<#to_s, Item>] Items to display in the menu. Items
     #   that are not an instance of the {Item} class will transparently
     #   be converted into one.

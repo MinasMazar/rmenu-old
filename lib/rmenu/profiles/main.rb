@@ -4,6 +4,8 @@ module RMenu
 
     class Main < Base
 
+      attr_flag :item_added
+
       def initialize(params = {})
         super params
       end
@@ -12,6 +14,7 @@ module RMenu
         current_menu.insert 1, item
         current_menu.uniq!
         save_items
+        item_added!
         item
       end
 
@@ -22,8 +25,8 @@ module RMenu
         item
       end
 
-      def build_items(items = [], rebuild = false)
-        super items
+      def build_items(rebuild = false)
+        super
         # Rebuild application items (XDG .desktop directory)
         self.items += utils.build_desktop_application_menu if rebuild
         # Load saved items
@@ -100,14 +103,13 @@ module RMenu
       end
 
       def proc_string(str)
+        super str
+        cmd, label = nil
         if md = str.match(/(.+)\s*#\s*(.+)/)
-          cmd, label = md[1], md[2]
+          cmd, label = md[1], md[2].strip
           item = Item.format!(label, cmd, user_defined: true)
-          add_item item
-        else
-          cmd = str
+          add_item item unless item_added?
         end
-        super cmd
       end
 
     end

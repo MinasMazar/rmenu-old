@@ -29,13 +29,18 @@ module RMenu
         build_items
       end
 
-      def build_items(items = [])
-        self.items = items
+      def build_items(rebuild = false)
+        self.items = []
       end
 
       def prepare
         set_params config.merge items: self.items
         self.current_menu = items
+      end
+
+      def get_item
+        prepare
+        super
       end
 
       def start
@@ -45,7 +50,6 @@ module RMenu
             $logger.info "#{self.class} is ready and listening on #{@waker_io}"
             wake_code = IO.read(@waker_io).chomp.strip
             $logger.debug "Received wake code <#{wake_code}>"
-            prepare
             item = get_item
             results = proc item
             $logger.debug "Proc item returns #{results.inspect}"
@@ -92,7 +96,7 @@ module RMenu
         picker.get_item
       end
 
-      def build_items
+      def build_items(rebuild = false)
         self.items = []
       end
 
