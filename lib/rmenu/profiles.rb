@@ -1,8 +1,6 @@
 module RMenu
   module Profiles
 
-    DEFAULT = :main
-
     module Register
 
       @@registered_profiles = {}

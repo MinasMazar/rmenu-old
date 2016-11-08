@@ -29,6 +29,7 @@ module RMenu
 
       def prepare
         super
+        items.sort_by! { |i| -1 * ( i.options[:picked] || 0 ) }
         reset_item_added
       end
 
@@ -42,7 +43,6 @@ module RMenu
         self.items += rmenu_items.uniq
         # Uniq elements and put most picked ont top
         self.items.uniq!
-        self.items = items.sort_by { |i| -1 * ( i.options[:picked] || 0 ) }
       end
 
       def load_items
@@ -107,6 +107,14 @@ module RMenu
         submenu << Item.format!("Quit RMenu", :stop, virtual: true)
         menu << Item.format!("RMenu", submenu, virtual: true)
         menu
+      end
+
+      def proc(item)
+        super item
+        if item && !item.options[:virtual]
+          item.options[:picked] ||= 0
+          item.options[:picked] += 1
+        end
       end
 
       def proc_string(str)

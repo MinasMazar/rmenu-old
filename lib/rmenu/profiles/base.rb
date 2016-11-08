@@ -6,9 +6,9 @@ module RMenu
 
       # Reopen Item class and change items format
       # class DMenuWrapper::Item
-      #   def to_s
+      #   def key
       #     value_s = value.is_a?(String) ? " (#{value}) " : ''
-      #     "#{key}#{value_s}[#{options[:picked] || 0}]"
+      #     "#{@key}#{value_s}[#{options[:picked] || 0}]"
       #   end
       # end
 
@@ -39,8 +39,7 @@ module RMenu
       end
 
       def proc(item)
-        self.current_item = item
-        $logger.debug "Selected #{current_item.inspect}"
+        $logger.debug "Selected #{item.inspect}"
 
         if item.value.is_a? Symbol
           self.send item.value if self.respond_to? item.value
@@ -123,6 +122,19 @@ module RMenu
         end
         $logger.debug "Command interpolated with eval blocks: #{replaced_cmd}"
         replaced_cmd
+      end
+
+      def notify(msg)
+        notifier = DMenuWrapper.new config
+        notifier.prompt = msg
+        notifier.get_item
+      end
+
+      def pick(prompt, items = [])
+        picker = DMenuWrapper.new config
+        picker.prompt = prompt
+        picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
+        picker.get_item
       end
 
       def system_exec(*cmd)
