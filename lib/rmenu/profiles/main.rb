@@ -46,10 +46,12 @@ module RMenu
       end
 
       def load_items
+        return nil unless File.exist? config[:items_file]
         utils.load_items config[:items_file]
       end
 
       def save_items
+        return nil unless File.exist? config[:items_file]
         items_to_save = items.reject { |i| i.options[:virtual] }
         utils.save_items items_to_save, config[:items_file]
       end

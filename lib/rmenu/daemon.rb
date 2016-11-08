@@ -9,6 +9,7 @@ module RMenu
     attr_accessor :dmenu_thread
     attr_accessor :current_profile
     attr_accessor :profiles
+    attr_accessor :plugin_manager
 
     def initialize(params = {})
       @config_file = params[:config_file]
@@ -17,6 +18,8 @@ module RMenu
       super config
       @waker_io = @config[:waker_io]
       @profiles = {}
+      @current_profile = Profiles::DEFAULT
+      @plugin_manager = Plugins::PluginManager.new config[:plugins_dir]
     end
 
     def start

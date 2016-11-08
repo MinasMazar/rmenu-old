@@ -9,7 +9,8 @@ module RMenu
     DEFAULT_CONFIG = {
       :config_file => File.expand_path(".rmenu.yml", "~"),
       :items_file => File.expand_path(".rmenu_items.yml", "~"),
-      :waker_io => File.expand_path(".rmenu_waker", "~")
+      :waker_io => File.expand_path(".rmenu_waker", "~"),
+      :plugins_dir => File.expand_path(".rmenu_plugins/", "~")
     }
 
     DEFAULT_DMENU_PARAMS = {
@@ -25,7 +26,6 @@ module RMenu
     }
 
     class_option :config, :default => DEFAULT_CONFIG[:config_file]
-
     attr_accessor :config
 
     no_commands do
@@ -44,6 +44,12 @@ module RMenu
         end
       end
 
+      def create_plugins_dir_if_not_present
+        unless File.exists? config[:plugins_dir]
+          FileUtils.mkpath config[:plugins_dir]
+        end
+      end
+
       def create_items_file_if_not_present
         unless File.exists? config[:items_file]
           items_file = File.new config[:items_file], "w"
@@ -57,16 +63,17 @@ module RMenu
         create_rmenu_config_if_not_present
         create_rmenu_waker_if_not_present
         create_items_file_if_not_present
+        create_plugins_dir_if_not_present
       end
 
       def get_instance
-        rmenu_instance = RMenu::Daemon.new config
+        RMenu::Daemon.new config
       end
 
     end
 
     desc "start", "Start rmenu instance in background"
-    option :with_pry, type: :boolean, default: false, desc: "Start with an associated PRY session (must be launched from terminal!)"
+    option :with_pry, type: :boolean, default: false, desc: "Start with an associated PRY session within daemon instance (must be launched from terminal!)"
     def start
       setup_config
       rmenu_instance = get_instance
