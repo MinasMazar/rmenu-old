@@ -4,6 +4,8 @@ module RMenu
 
     class Main < Base
 
+      register_profile
+
       attr_flag :item_added
 
       def initialize(params = {})
@@ -11,18 +13,23 @@ module RMenu
       end
 
       def add_item(item)
-        current_menu.insert 1, item
-        current_menu.uniq!
+        items.insert 1, item
+        items.uniq!
         save_items
         item_added!
         item
       end
 
       def delete_item(item)
-        current_menu.delete item
-        current_menu.uniq!
+        items.delete item
+        items.uniq!
         save_items
         item
+      end
+
+      def prepare
+        super
+        reset_item_added
       end
 
       def build_items(rebuild = false)
@@ -71,7 +78,7 @@ module RMenu
 
       def delete
         $logger.debug ":delete command called"
-        item = pick "Delete item", current_menu
+        item = pick "Delete item", items
         $logger.debug "indexed item = #{item.inspect}"
         delete_item item
       end

@@ -1,3 +1,5 @@
+require "rmenu/dmenu_wrapper"
+
 module RMenu
   module Profiles
     class Base < DMenuWrapper
@@ -10,22 +12,16 @@ module RMenu
       #   end
       # end
 
-      attr_accessor :config_file
-      attr_accessor :config
-      attr_accessor :dmenu_thread_flag
-      attr_accessor :dmenu_thread
-      attr_accessor :current_menu
-      attr_accessor :current_item
-
+      include Profiles::Register
       include Utils
 
+      attr_accessor :config
+
+
       def initialize(params = {})
-        @config_file = params[:config_file]
-        load_config
-        @config.merge! params
+        @config = params
         super @config
         @config[:locale] ||= "it"
-        @waker_io = @config[:waker_io]
         build_items
       end
 
@@ -34,70 +30,12 @@ module RMenu
       end
 
       def prepare
-        set_params config.merge items: self.items
-        self.current_menu = items
+        set_params config.merge items: items
       end
 
       def get_item
         prepare
         super
-      end
-
-      def start
-        self.dmenu_thread_flag = true
-        self.dmenu_thread = Thread.new do
-          while dmenu_thread_flag do
-            $logger.info "#{self.class} is ready and listening on #{@waker_io}"
-            wake_code = IO.read(@waker_io).chomp.strip
-            $logger.debug "Received wake code <#{wake_code}>"
-            item = get_item
-            results = proc item
-            $logger.debug "Proc item returns #{results.inspect}"
-          end
-        end
-        begin
-          if block_given?
-            yield
-          else
-            self.dmenu_thread.join
-          end
-          stop
-        rescue Interrupt
-          $logger.info "Interrut catched...exiting."
-          stop
-        end
-      end
-
-      def stop
-        save_items
-        @dmenu_thread_flag = false
-        sleep(1) && @dmenu_thread && @dmenu_thread.kill
-      end
-
-      def load_config
-        raise ArgumentError.new "File #{@config_file} does not exists" unless File.exists? @config_file
-        @config = YAML.load_file @config_file
-      end
-
-      def save_config
-        File.write @config_file, YAML.dump(@config)
-      end
-
-      def notify(msg)
-        notifier = DMenuWrapper.new config
-        notifier.prompt = msg
-        notifier.get_item
-      end
-
-      def pick(prompt, items = [])
-        picker = DMenuWrapper.new config
-        picker.prompt = prompt
-        picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
-        picker.get_item
-      end
-
-      def build_items(rebuild = false)
-        self.items = []
       end
 
       def proc(item)
@@ -112,7 +50,6 @@ module RMenu
           proc_string item.value
 
         elsif item.value.is_a? Array
-          self.current_menu = item.value
           submenu = DMenuWrapper.new config
           submenu.prompt = item.key
           submenu.items = item.value
@@ -127,7 +64,10 @@ module RMenu
       end
 
       def proc_string(str)
-        if md = str.match(/^:\s*(.+)/)
+        if md = str.match(/^\s*(\{\{(.+)\}\})/)
+          string_to_eval = self.instance_eval(md[2]).to_s
+          instance_eval string_to_eval
+        elsif md = str.match(/^:\s*(.+)/)
           catch_and_notify_exception do
             meth = md[1].split[0]
             args = md[1].split[1..-1]

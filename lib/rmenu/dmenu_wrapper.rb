@@ -8,13 +8,13 @@ module RMenu
         key = nil
         options = {}
         value = nil
-        if str =~ /(.+?)(;?)\s*#(.+)/
-          key = $3
+        if md = str.match(/\s*(.+?)(;?)\s*#(.+)/)
+          key = md[3].strip
           options[:term_exec] = true if $2
-          value = $1
-          new key, value, options
+          value = md[1]
+          format! key, value, options
         else
-          new str, str, options
+          format! str, str, options
         end
       end
 

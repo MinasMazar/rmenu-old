@@ -6,6 +6,7 @@ require "rmenu/version"
 require "rmenu/monkeypatch"
 require "rmenu/utils"
 require "rmenu/profiles"
+require "rmenu/daemon"
 
 module Rmenu
 end
