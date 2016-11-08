@@ -7,8 +7,6 @@ module RMenu
     attr_accessor :waker_io
     attr_accessor :dmenu_thread_flag
     attr_accessor :dmenu_thread
-    attr_accessor :current_profile
-    attr_accessor :profiles
     attr_accessor :plugin_manager
 
     def initialize(params = {})
@@ -17,8 +15,6 @@ module RMenu
       config.merge! params
       super config
       @waker_io = @config[:waker_io]
-      @profiles = {}
-      @current_profile = Profiles::DEFAULT
       @plugin_manager = Plugins::PluginManager.new config[:plugins_dir]
     end
 
@@ -29,9 +25,8 @@ module RMenu
           $logger.info "#{self.class} is ready and listening on #{@waker_io}"
           wake_code = IO.read(@waker_io).chomp.strip
           $logger.debug "Received wake code <#{wake_code}>"
-          switch_profile wake_code
-          item = current_profile.get_item
-          results = current_profile.proc item
+          item = get_item
+          results = proc item
           $logger.debug "Proc item returns #{results.inspect}"
         end
       end
@@ -61,13 +56,6 @@ module RMenu
 
     def save_config
       File.write @config_file, YAML.dump(@config)
-    end
-
-    def switch_profile(code)
-      code = code.to_sym
-      profile_to_load = registered_profiles[code] || Profiles::Main
-      profiles[code] ||= profile_to_load.new config
-      self.current_profile = profiles[code]
     end
 
   end
