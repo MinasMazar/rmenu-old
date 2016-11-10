@@ -61,15 +61,17 @@ module RMenu
           field = field.to_sym
           val = config[field]
           item = pick "Config[#{field}]: #{val}"
-          $logger.debug "Config modified: config[:#{field}] #{val} -> #{item.value}"
-          config[field] = item.value
+          unless item.blank?
+            $logger.debug "Config modified: config[:#{field}] #{val} -> #{item.value}"
+            config[field] = item.value
+          end
         else
           picker = DMenuWrapper.new config
           picker.prompt = "Config"
           picker.items = config.map { |conf,v| Item.new(conf, conf) }
           picker.lines = config.size
           item = picker.get_item
-          conf item.value unless item.value.empty?
+          conf item.value unless item.blank?
         end
       end
 

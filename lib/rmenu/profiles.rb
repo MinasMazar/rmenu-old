@@ -7,6 +7,7 @@ module RMenu
 
       def self.included(klass)
         klass.extend self
+        klass.register_profile
       end
 
       def registered_profiles
@@ -14,13 +15,8 @@ module RMenu
       end
 
       def register_profile(id = nil)
-        if self.respond_to?(:ancestors) && self.ancestors.include?(Profiles::Base)
-          id ||= self.to_s.split("::").last.downcase.to_sym
-          @@registered_profiles[id] = self
-        else
-          id ||= self.class.to_s.split("::").downcase.to_sym
-          @@registered_profiles[id] = self.class
-        end
+        id ||= self.to_s.split("::").last.downcase.to_sym
+        @@registered_profiles[id] = self
       end
 
     end

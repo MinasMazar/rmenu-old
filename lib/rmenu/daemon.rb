@@ -8,6 +8,8 @@ module RMenu
     attr_accessor :dmenu_thread_flag
     attr_accessor :dmenu_thread
     attr_accessor :plugin_manager
+    attr_accessor :profiles
+    attr_accessor :current_profile
 
     def initialize(params = {})
       @config_file = params[:config_file]
@@ -16,6 +18,7 @@ module RMenu
       super config
       @waker_io = @config[:waker_io]
       @plugin_manager = Plugins::PluginManager.new config[:plugins_dir]
+      @profiles = {}
     end
 
     def start
@@ -25,8 +28,9 @@ module RMenu
           $logger.info "#{self.class} is ready and listening on #{@waker_io}"
           wake_code = IO.read(@waker_io).chomp.strip
           $logger.debug "Received wake code <#{wake_code}>"
-          item = get_item
-          results = proc item
+          self.current_profile = select_profile wake_code
+          item = current_profile.get_item
+          results = current_profile.proc item
           $logger.debug "Proc item returns #{results.inspect}"
         end
       end
@@ -56,6 +60,17 @@ module RMenu
 
     def save_config
       File.write @config_file, YAML.dump(@config)
+    end
+
+    def select_profile(key)
+      key = key.to_sym
+      unless registered_profiles[key]
+        $logger.debug "No profile found for <#{key}>! Fallback to <#{self.class.inspect}>"
+        return self.current_profile = self
+      end
+      self.profiles[key] ||= registered_profiles[key].new config
+      $logger.debug "Using profile <#{profiles[key].class.inspect} for <#{key}>"
+      self.current_profile = self.profiles[key]
     end
 
   end

@@ -44,8 +44,7 @@ module RMenu
         if item.value.is_a? Symbol
           self.send item.value if self.respond_to? item.value
 
-        elsif item.value.is_a? String
-          return if item.value && item.value.nil? || item.value.empty?
+        elsif item.value.is_a?(String) && !item.blank?
           proc_string item.value
 
         elsif item.value.is_a? Array

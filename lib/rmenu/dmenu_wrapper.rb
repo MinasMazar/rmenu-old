@@ -63,6 +63,9 @@ module RMenu
         return false unless o.kind_of? Item
         value == o.value
       end
+      def blank?
+        value && value.empty? if value.respond_to? :empty
+      end
     end
 
     # @return [Array<#to_s, Item>] Items to display in the menu. Items
