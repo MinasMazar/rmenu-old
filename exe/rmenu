@@ -58,12 +58,18 @@ module RMenu
         end
       end
 
+      def setup_plugins
+        plugin_manager = Plugins::PluginManager.new config[:plugins_dir]
+        plugin_manager.load_all
+      end
+
       def setup_config
         self.config = DEFAULT_CONFIG
         create_rmenu_config_if_not_present
         create_rmenu_waker_if_not_present
         create_items_file_if_not_present
         create_plugins_dir_if_not_present
+        setup_plugins
       end
 
       def get_instance

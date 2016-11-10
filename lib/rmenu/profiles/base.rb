@@ -22,11 +22,11 @@ module RMenu
         @config = params
         super @config
         @config[:locale] ||= "it"
-        build_items
+        self.items = build_items
       end
 
-      def build_items(rebuild = false)
-        self.items = []
+      def build_items
+        []
       end
 
       def prepare

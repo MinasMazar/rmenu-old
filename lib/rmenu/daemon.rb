@@ -7,7 +7,6 @@ module RMenu
     attr_accessor :waker_io
     attr_accessor :dmenu_thread_flag
     attr_accessor :dmenu_thread
-    attr_accessor :plugin_manager
     attr_accessor :profiles
     attr_accessor :current_profile
 
@@ -17,7 +16,6 @@ module RMenu
       config.merge! params
       super config
       @waker_io = @config[:waker_io]
-      @plugin_manager = Plugins::PluginManager.new config[:plugins_dir]
       @profiles = {}
     end
 
@@ -47,6 +45,14 @@ module RMenu
       end
     end
 
+    def rmenu_items
+      items = super
+      items.value.insert -2, Item.format!("Switch Profile",
+        registered_profiles.map { |name,klass|  Item.format!(name, ":switch_profile #{name}") },
+        virtual: true)
+      items
+    end
+
     def stop
       save_items
       @dmenu_thread_flag = false
@@ -65,12 +71,18 @@ module RMenu
     def select_profile(key)
       key = key.to_sym
       unless registered_profiles[key]
+        # raise "No profile found for <#{key}>!"
         $logger.debug "No profile found for <#{key}>! Fallback to <#{self.class.inspect}>"
         return self.current_profile = self
       end
       self.profiles[key] ||= registered_profiles[key].new config
       $logger.debug "Using profile <#{profiles[key].class.inspect} for <#{key}>"
       self.current_profile = self.profiles[key]
+    end
+
+    def switch_profile(key)
+      select_profile key
+      proc current_profile.get_item
     end
 
   end

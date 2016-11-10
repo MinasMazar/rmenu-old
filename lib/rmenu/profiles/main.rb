@@ -33,16 +33,14 @@ module RMenu
         reset_item_added
       end
 
-      def build_items(rebuild = false)
-        super
-        # Rebuild application items (XDG .desktop directory)
-        self.items += utils.build_desktop_application_menu if rebuild
+      def build_items
+        items = []
         # Load saved items
-        self.items += load_items.uniq
+        items += load_items.uniq
         # Rmenu commands into a submenu
-        self.items += rmenu_items.uniq
+        items << rmenu_items
         # Uniq elements and put most picked ont top
-        self.items.uniq!
+        items.uniq
       end
 
       def load_items
@@ -92,7 +90,7 @@ module RMenu
           proc_string ":conf text_editor"
           build_items
         end
-        menu, submenu = [], []
+        submenu = []
         submenu << Item.format!("Edit config on the fly", :conf, virtual: true)
         if config[:text_editor]
           submenu << Item.format!("Edit configuration file", "#{config[:text_editor]} #{config[:config_file]}", virtual: true)
@@ -109,8 +107,7 @@ module RMenu
         submenu << Item.format!("Load items", :load_items, virtual: true)
         submenu << Item.format!("Save items", :save_items, virtual: true)
         submenu << Item.format!("Quit RMenu", :stop, virtual: true)
-        menu << Item.format!("RMenu", submenu, virtual: true)
-        menu
+        Item.format!("RMenu", submenu, virtual: true)
       end
 
       def proc(item)
