@@ -61,11 +61,14 @@ module RMenu
         end
       end
 
-      def proc_string(str)
-        if md = str.match(/^\s*(\{\{(.+)\}\})/)
+      def proc_string(cmd)
+        replaced_cmd = replace_tokens cmd
+        return unless replaced_cmd
+        replaced_cmd = replace_blocks replaced_cmd
+        if md = replaced_cmd.match(/^\s*(\{\{(.+)\}\})/)
           string_to_eval = self.instance_eval(md[2]).to_s
           instance_eval string_to_eval
-        elsif md = str.match(/^:\s*(.+)/)
+        elsif md = replaced_cmd.match(/^:\s*(.+)/)
           catch_and_notify_exception do
             meth = md[1].split[0]
             args = md[1].split[1..-1]
@@ -75,23 +78,13 @@ module RMenu
               send meth
             end
           end
-        elsif md = str.match(/^!\s*(.+)/)
+        elsif md = replaced_cmd.match(/^!\s*(.+)/)
           exec_command md[1]
-        elsif !str.empty?
-          exec_command str
-        end
-      end
-
-      def exec_command(cmd)
-        replaced_cmd = replace_tokens cmd
-        return unless replaced_cmd
-        replaced_cmd = replace_blocks replaced_cmd
-        return unless replaced_cmd
-        if md = replaced_cmd.match(/^http(s?):\/\//)
-          system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
-        elsif md = replaced_cmd.strip.match(/(.+);$/)
+        elsif md = replaced_cmd.match(/^;\s*(.+)/)
           system_exec config[:terminal], md[1].strip
-        else
+        elsif md = replaced_cmd.match(/^http(s?):\/\//)
+          system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
+        elsif !replaced_cmd.empty?
           system_exec replaced_cmd
         end
       end
