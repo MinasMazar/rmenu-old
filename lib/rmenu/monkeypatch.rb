@@ -3,6 +3,12 @@ class String
   def blank?
     strip.empty?
   end
+  def is_false?
+    self == "false"
+  end
+  def is_true?
+    self == "true"
+  end
 end
 
 class Object

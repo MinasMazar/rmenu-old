@@ -54,7 +54,7 @@ module RMenu
     end
 
     def stop
-      save_items
+      save_items if config[:save_on_exit].is_true?
       @dmenu_thread_flag = false
       sleep(1) && @dmenu_thread && @dmenu_thread.kill
     end

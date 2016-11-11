@@ -25,4 +25,5 @@ end
 
 require "rmenu/dmenu_wrapper"
 require "rmenu/profiles/base"
+require "rmenu/profiles/main_mixins/introspectable"
 require "rmenu/profiles/main"

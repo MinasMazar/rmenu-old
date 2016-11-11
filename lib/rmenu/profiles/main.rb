@@ -6,6 +6,8 @@ module RMenu
 
       register_profile
 
+      include Introspectable
+
       attr_flag :item_added
 
       def initialize(params = {})
@@ -15,7 +17,6 @@ module RMenu
       def add_item(item)
         items.insert 1, item
         items.uniq!
-        save_items
         item_added!
         item
       end
@@ -23,7 +24,6 @@ module RMenu
       def delete_item(item)
         items.delete item
         items.uniq!
-        save_items
         item
       end
 
@@ -73,18 +73,6 @@ module RMenu
         end
       end
 
-      def add item_str = nil
-        item = Item.parse item_str
-        add_item item if item
-      end
-
-      def delete
-        $logger.debug ":delete command called"
-        item = pick "Delete item", items
-        $logger.debug "indexed item = #{item.inspect}"
-        delete_item item
-      end
-
       def rmenu_items
         edit_build_launch_proc = Proc.new do |to_edit|
           proc_string ":conf text_editor"
@@ -115,16 +103,6 @@ module RMenu
         if item && !item.options[:virtual]
           item.options[:picked] ||= 0
           item.options[:picked] += 1
-        end
-      end
-
-      def proc_string(str)
-        super str
-        cmd, label = nil
-        if md = str.match(/(.+)\s*#\s*(.+)/)
-          cmd, label = md[1], md[2].strip
-          item = Item.format!(label, cmd, user_defined: true)
-          add_item item unless item_added?
         end
       end
 
