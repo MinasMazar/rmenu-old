@@ -5,7 +5,7 @@ module RMenu
     class Base < DMenuWrapper
 
       # Reopen Item class and change items format
-      # class DMenuWrapper::Item
+      # class RMenu::Item
       #   def key
       #     value_s = value.is_a?(String) ? " (#{value}) " : ''
       #     "#{@key}#{value_s}[#{options[:picked] || 0}]"
@@ -29,46 +29,32 @@ module RMenu
         []
       end
 
-      def prepare
-        set_params config.merge items: items
-      end
-
-      def get_item
-        prepare
-        super
-      end
-
       def proc(item)
         $logger.debug "Selected #{item.inspect}"
 
         if item.value.is_a? Symbol
-          self.send item.value if self.respond_to? item.value
+          proc_symbol item.value if respond_to? item.value
 
         elsif item.value.is_a?(String) && !item.blank?
           proc_string item.value
 
         elsif item.value.is_a? Array
-          submenu = DMenuWrapper.new config
-          submenu.prompt = item.key
-          submenu.items = item.value
-          item = submenu.get_item
-          proc item
+          proc_array item
 
         elsif item.value.is_a? Proc
-          catch_and_notify_exception do
-            item.value.call self
-          end
+          proc_proc item
         end
       end
 
+      def proc_symbol(cmd)
+        self.send cmd
+      end
+
       def proc_string(cmd)
-        replaced_cmd = replace_tokens cmd
-        return unless replaced_cmd
-        replaced_cmd = replace_blocks replaced_cmd
-        if md = replaced_cmd.match(/^\s*(\{\{(.+)\}\})/)
+        if md = cmd.match(/^\s*(\{\{(.+)\}\})/)
           string_to_eval = self.instance_eval(md[2]).to_s
           instance_eval string_to_eval
-        elsif md = replaced_cmd.match(/^:\s*(.+)/)
+        elsif md = cmd.match(/^:\s*(.+)/)
           catch_and_notify_exception do
             meth = md[1].split[0]
             args = md[1].split[1..-1]
@@ -78,14 +64,34 @@ module RMenu
               send meth
             end
           end
-        elsif md = replaced_cmd.match(/^!\s*(.+)/)
-          exec_command md[1]
-        elsif md = replaced_cmd.match(/^;\s*(.+)/)
-          system_exec config[:terminal], md[1].strip
-        elsif md = replaced_cmd.match(/^http(s?):\/\//)
-          system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
-        elsif !replaced_cmd.empty?
-          system_exec replaced_cmd
+        else
+          replaced_cmd = replace_tokens cmd
+          return unless replaced_cmd
+          replaced_cmd = replace_blocks replaced_cmd
+          return unless replaced_cmd
+          if md = replaced_cmd.match(/^!\s*(.+)/)
+            system_exec md[1]
+          elsif md = replaced_cmd.match(/^;\s*(.+)/)
+            system_exec config[:terminal], md[1].strip
+          elsif md = replaced_cmd.match(/^http(s?):\/\//)
+            system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
+          elsif !replaced_cmd.empty?
+            system_exec replaced_cmd
+          end
+        end
+      end
+
+      def proc_array(item)
+        submenu = DMenuWrapper.new config
+        submenu.prompt = item.key
+        submenu.items = item.value
+        item = submenu.get_item
+        proc item
+      end
+
+      def proc_proc(item)
+        catch_and_notify_exception do
+          item.value.call self
         end
       end
 
@@ -117,16 +123,16 @@ module RMenu
       end
 
       def notify(msg)
-        notifier = DMenuWrapper.new config
+        notifier = Base.new config
         notifier.prompt = msg
         notifier.get_item
       end
 
       def pick(prompt, items = [])
-        picker = DMenuWrapper.new config
+        picker = Base.new config
         picker.prompt = prompt
-        picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
-        picker.get_item
+        picker.items = items
+        item = picker.get_item
       end
 
       def system_exec(*cmd)

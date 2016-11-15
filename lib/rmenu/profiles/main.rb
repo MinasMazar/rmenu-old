@@ -6,8 +6,6 @@ module RMenu
 
       register_profile
 
-      include Introspectable
-
       attr_flag :item_added
 
       def initialize(params = {})
@@ -21,16 +19,23 @@ module RMenu
         item
       end
 
-      def delete_item(item)
-        items.delete item
+      def delete_items(items)
+        items = [ items ] unless items.is_a? Array
+        self.items -= items
         items.uniq!
-        item
+        items
       end
 
+      alias delete_item delete_items
+
       def prepare
-        super
         items.sort_by! { |i| -1 * ( i.options[:picked] || 0 ) }
         reset_item_added
+      end
+
+      def get_item
+        prepare
+        super
       end
 
       def build_items
@@ -74,7 +79,7 @@ module RMenu
       end
 
       def rmenu_items
-        edit_build_launch_proc = Proc.new do |to_edit|
+        edit_text_editor_conf = Proc.new do |to_edit|
           proc_string ":conf text_editor"
           build_items
         end
@@ -83,27 +88,19 @@ module RMenu
         if config[:text_editor]
           submenu << Item.format!("Edit configuration file", "#{config[:text_editor]} #{config[:config_file]}", virtual: true)
         else
-          submenu << Item.format!("Edit configuration file (disabled: define config[:text_editor])", edit_build_launch_proc, virtual: true)
+          submenu << Item.format!("Edit configuration file (disabled: define config[:text_editor])", edit_text_editor_conf, virtual: true)
         end
         submenu << Item.format!("Load config", :load_config, virtual: true)
         submenu << Item.format!("Save config", :save_config, virtual: true)
         if config[:text_editor]
           submenu << Item.format!("Edit items file", "#{config[:text_editor]} #{config[:items_file]}", virtual: true)
         else
-          submenu << Item.format!("Edit items file (disabled: define config[:text_editor])", edit_build_launch_proc, virtual: true)
+          submenu << Item.format!("Edit items file (disabled: define config[:text_editor])", edit_text_editor_conf, virtual: true)
         end
         submenu << Item.format!("Load items", :load_items, virtual: true)
         submenu << Item.format!("Save items", :save_items, virtual: true)
         submenu << Item.format!("Quit RMenu", :stop, virtual: true)
         Item.format!("RMenu", submenu, virtual: true)
-      end
-
-      def proc(item)
-        super item
-        if item && !item.options[:virtual]
-          item.options[:picked] ||= 0
-          item.options[:picked] += 1
-        end
       end
 
     end

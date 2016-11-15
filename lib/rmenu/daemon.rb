@@ -1,7 +1,7 @@
 require "rmenu/profiles/base"
 
 module RMenu
-  class Daemon < Profiles::Main
+  class Daemon < Profiles::Introspectable
 
     attr_accessor :config_file
     attr_accessor :waker_io
@@ -9,6 +9,7 @@ module RMenu
     attr_accessor :dmenu_thread
     attr_accessor :profiles
     attr_accessor :current_profile
+    attr_accessor :keep_open
 
     def initialize(params = {})
       @config_file = params[:config_file]
@@ -20,12 +21,17 @@ module RMenu
     end
 
     def start
+      wake_code = nil
       self.dmenu_thread_flag = true
       self.dmenu_thread = Thread.new do
         while dmenu_thread_flag do
-          $logger.info "#{self.class} is ready and listening on #{@waker_io}"
-          wake_code = IO.read(@waker_io).chomp.strip
-          $logger.debug "Received wake code <#{wake_code}>"
+          if keep_open
+            wake_code = keep_open
+          else
+            $logger.info "#{self.class} is ready and listening on #{@waker_io}"
+            wake_code = IO.read(@waker_io).chomp.strip
+            $logger.debug "Received wake code <#{wake_code}>"
+          end
           self.current_profile = select_profile wake_code
           item = current_profile.get_item
           results = current_profile.proc item
