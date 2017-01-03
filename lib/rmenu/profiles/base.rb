@@ -89,9 +89,17 @@ module RMenu
         replaced_cmd = replace_blocks replaced_cmd
         return unless replaced_cmd
         if md = replaced_cmd.match(/^http(s?):\/\//)
-          system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
+          unless config[:web_browser]
+            conf :web_browser
+          else
+            system_exec config[:web_browser], "\"", utils.str2url(replaced_cmd.strip), "\""
+          end
         elsif md = replaced_cmd.strip.match(/(.+);$/)
-          system_exec config[:terminal], md[1].strip
+          if config[:terminal]
+            conf :terminal
+          else
+            system_exec config[:terminal], md[1].strip
+          end
         else
           system_exec replaced_cmd
         end
