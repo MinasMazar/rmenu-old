@@ -59,12 +59,13 @@ module RMenu
           field = field.to_sym
           val = config[field]
           item = pick "Config[#{field}]: #{val}"
-          $logger.debug "Config modified: config[:#{field}] #{val} -> #{item.value}"
-          config[field] = item.value
+          item_evaluated = eval item.value
+          $logger.debug "Config modified: config[:#{field}] #{val} -> #{item_evaluated}"
+          config[field] = item_evaluated
         else
           picker = DMenuWrapper.new config
           picker.prompt = "Config"
-          picker.items = config.map { |conf,v| Item.new(conf, conf) }
+          picker.items = config.map { |conf,v| Item.new("#{conf} [ #{v}]", conf) }
           picker.lines = config.size
           item = picker.get_item
           conf item.value unless item.value.empty?
@@ -88,6 +89,9 @@ module RMenu
           proc_string ":conf text_editor"
           build_items
         end
+        get_dmenu_usage_proc = Proc.new do
+          notify DMenuWrapper.usage
+        end
         menu, submenu = [], []
         submenu << Item.format!("Edit config on the fly", :conf, virtual: true)
         if config[:text_editor]
@@ -105,6 +109,9 @@ module RMenu
         submenu << Item.format!("Load items", :load_items, virtual: true)
         submenu << Item.format!("Save items", :save_items, virtual: true)
         submenu << Item.format!("Quit RMenu", :stop, virtual: true)
+        submenu << Item.format!("DMenu Executable", [
+          Item.format!("Usage", get_dmenu_usage_proc, virtual: true)
+        ], virtual: true)
         menu << Item.format!("RMenu", submenu, virtual: true)
         menu
       end

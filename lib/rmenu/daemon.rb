@@ -17,6 +17,7 @@ module RMenu
       super config
       @waker_io = @config[:waker_io]
       @profiles = {}
+      @current_profile = self
     end
 
     def start
@@ -26,7 +27,6 @@ module RMenu
           $logger.info "#{self.class} is ready and listening on #{@waker_io}"
           wake_code = IO.read(@waker_io).chomp.strip
           $logger.debug "Received wake code <#{wake_code}>"
-          switch_profile wake_code
           item = current_profile.get_item
           results = current_profile.proc item
           $logger.debug "Proc item returns #{results.inspect}"
@@ -46,7 +46,7 @@ module RMenu
     end
 
     def stop
-      save_items
+      save_items if config[:save_on_quit]
       @dmenu_thread_flag = false
       sleep(1) && @dmenu_thread && @dmenu_thread.kill
     end
@@ -58,13 +58,6 @@ module RMenu
 
     def save_config
       File.write @config_file, YAML.dump(@config)
-    end
-
-    def switch_profile(code)
-      code = code.to_sym
-      profile_to_load = registered_profiles[code] || Profiles::Main
-      profiles[code] ||= profile_to_load.new config
-      self.current_profile = profiles[code]
     end
 
   end

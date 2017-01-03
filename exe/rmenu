@@ -14,14 +14,7 @@ module RMenu
 
     DEFAULT_DMENU_PARAMS = {
       :position            => :top,
-      :case_insensitive    => false,
-      :lines               => 1,
-      :font                => nil,
-      :background          => nil,
-      :foreground          => nil,
-      :selected_background => nil,
-      :selected_foreground => nil,
-      :prompt              => nil
+      :case_insensitive    => true
     }
 
     class_option :config, :default => DEFAULT_CONFIG[:config_file]
@@ -53,7 +46,7 @@ module RMenu
       end
 
       def setup_config
-        self.config = DEFAULT_CONFIG
+        self.config = DEFAULT_CONFIG.merge DEFAULT_DMENU_PARAMS
         create_rmenu_config_if_not_present
         create_rmenu_waker_if_not_present
         create_items_file_if_not_present

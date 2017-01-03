@@ -3,6 +3,10 @@ require "rmenu/utils"
 module RMenu
   class DMenuWrapper
 
+    def self.usage
+      `dmenu --help 2>&1`.gsub(/(\n|\s)+/, " ")
+    end
+
     class Item
       def self.parse(str)
         key = nil
