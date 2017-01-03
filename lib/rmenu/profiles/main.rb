@@ -58,7 +58,7 @@ module RMenu
         if field
           field = field.to_sym
           val = config[field]
-          item = pick "Config[#{field}]: #{val}"
+          item = pick "Config[#{field}]: #{val} [THIS CODE WILL BE EVALUATED]"
           item_evaluated = eval item.value
           $logger.debug "Config modified: config[:#{field}] #{val} -> #{item_evaluated}"
           config[field] = item_evaluated
