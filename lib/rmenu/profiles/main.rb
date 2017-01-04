@@ -36,13 +36,13 @@ module RMenu
       def build_items(rebuild = false)
         super
         # Rebuild application items (XDG .desktop directory)
-        self.items += utils.build_desktop_application_menu if rebuild
+        self.items += utils.build_desktop_application_menu.uniq if rebuild
         # Load saved items
-        self.items += load_items.uniq
+        self.items += load_items
         # Rmenu commands into a submenu
-        self.items += rmenu_items.uniq
+        self.items += rmenu_items
         # Uniq elements and put most picked ont top
-        self.items.uniq!
+        self.items
       end
 
       def load_items
@@ -106,7 +106,7 @@ module RMenu
         else
           submenu << Item.format!("Edit items file (disabled: define config[:text_editor])", edit_build_launch_proc, virtual: true)
         end
-        submenu << Item.format!("Load items", :load_items, virtual: true)
+        submenu << Item.format!("Load items", :build_items, virtual: true)
         submenu << Item.format!("Save items", :save_items, virtual: true)
         submenu << Item.format!("Quit RMenu", :stop, virtual: true)
         submenu << Item.format!("DMenu Executable", [
