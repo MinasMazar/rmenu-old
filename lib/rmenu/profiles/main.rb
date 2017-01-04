@@ -12,21 +12,6 @@ module RMenu
         super params
       end
 
-      def add_item(item)
-        items.insert 1, item
-        items.uniq!
-        save_items
-        item_added!
-        item
-      end
-
-      def delete_item(item)
-        items.delete item
-        items.uniq!
-        save_items
-        item
-      end
-
       def prepare
         super
         items.sort_by! { |i| -1 * ( i[:picked] || 0 ) }
@@ -43,6 +28,7 @@ module RMenu
         self.items += rmenu_items
         # Uniq elements and put most picked ont top
         self.items
+        $logger.debug "Rebuilded items"
       end
 
       def load_items
@@ -52,14 +38,15 @@ module RMenu
       def save_items
         items_to_save = items.reject { |i| i[:virtual] }
         utils.save_items items_to_save, config[:items_file]
+        $logger.info "Saved items on #{config[:items_file]}"
       end
 
       def conf field = nil
         if field
-          field = field.to_sym
+          field = field[:label].to_sym
           val = config[field]
           item = pick "Config[#{field}]: #{val} [THIS CODE WILL BE EVALUATED]"
-          item_evaluated = eval item
+          item_evaluated = eval item[:key]
           $logger.debug "Config modified: config[:#{field}] #{val} -> #{item_evaluated}"
           config[field] = item_evaluated
         else
@@ -74,14 +61,17 @@ module RMenu
 
       def add item_str = nil
         item = { label: item_str, key: item_str }
-        add_item item if item
+        if md = item_str.match(/(.+?)\s*#\s*(.+)/)
+          item = { label: md[2].strip, key: md[1].strip }
+        end
+        add_item item
+        $logger.info "Added item #{item.inspect}"
       end
 
       def delete
-        $logger.debug ":delete command called"
         item = pick "Delete item", items
-        $logger.debug "indexed item = #{item.inspect}"
         delete_item item
+        $logger.info "Deleted item #{item.inspect}"
       end
 
       def rmenu_items

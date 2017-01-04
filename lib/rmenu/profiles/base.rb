@@ -17,6 +17,21 @@ module RMenu
         build_items
       end
 
+      def add_item(item)
+        items.insert 1, item
+        items.uniq!
+        save_items
+        item_added!
+        item
+      end
+
+      def delete_item(item)
+        items.delete item
+        items.uniq!
+        save_items
+        item
+      end
+
       def build_items(rebuild = false)
         self.items = []
       end
