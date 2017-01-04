@@ -4,14 +4,6 @@ module RMenu
   module Profiles
     class Base < DMenuWrapper
 
-      # Reopen Item class and change items format
-      # class DMenuWrapper::Item
-      #   def key
-      #     value_s = value.is_a?(String) ? " (#{value}) " : ''
-      #     "#{@key}#{value_s}[#{options[:picked] || 0}]"
-      #   end
-      # end
-
       include Profiles::Register
       include Utils
 
@@ -41,23 +33,23 @@ module RMenu
       def proc(item)
         $logger.debug "Selected #{item.inspect}"
 
-        if item.value.is_a? Symbol
-          self.send item.value if self.respond_to? item.value
+        if item[:key].is_a? Symbol
+          self.send item[:key] if self.respond_to? item[:key]
 
-        elsif item.value.is_a? String
-          return if item.value && item.value.nil? || item.value.empty?
-          proc_string item.value
+        elsif item[:key].is_a? String
+          return if item[:key].nil? || item[:key].empty?
+          proc_string item[:key]
 
-        elsif item.value.is_a? Array
+        elsif item[:key].is_a? Array
           submenu = DMenuWrapper.new config
-          submenu.prompt = item.key
-          submenu.items = item.value
+          submenu.prompt = item[:label]
+          submenu.items = item[:key]
           item = submenu.get_item
           proc item
 
-        elsif item.value.is_a? Proc
+        elsif item[:key].is_a? Proc
           catch_and_notify_exception do
-            item.value.call self
+            item[:key].call self
           end
         end
       end
@@ -110,8 +102,8 @@ module RMenu
         while md = replaced_cmd.match(/(__(.+?)__)/)
           break unless md[1] || md[2]
           input = pick md[2]
-          return if input.value == "quit"
-          replaced_cmd.sub!(md[0], input.value)
+          return if input[:key] == "quit"
+          replaced_cmd.sub!(md[0], input[:key])
         end
         $logger.debug "Command interpolated with input tokens: #{replaced_cmd}"
         replaced_cmd
@@ -141,7 +133,7 @@ module RMenu
       def pick(prompt, items = [])
         picker = DMenuWrapper.new config
         picker.prompt = prompt
-        picker.items = items.map { |i| (i.is_a? Item) ? i : Item.new(i.to_s, i.to_s) }
+        picker.items = items
         picker.get_item
       end
 

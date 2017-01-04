@@ -26,7 +26,7 @@ module RMenu
             end
           end
           unless item[:exec] && item[:exec].empty? && item[:name] && item[:name].empty?
-            DMenuWrapper::Item.format! "#{item[:name]} (#{item[:exec]})", item[:exec]
+            { label: "#{item[:name]} (#{item[:exec]})", key: item[:exec] }
           end
         end
         items.compact.uniq

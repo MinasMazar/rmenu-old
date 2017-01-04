@@ -7,27 +7,15 @@ module RMenu
       `dmenu --help 2>&1`.gsub(/(\n|\s)+/, " ")
     end
 
-    # @return [Array<#to_s, Item>] Items to display in the menu. Items
-    #   that are not an instance of the {Item} class will transparently
-    #   be converted into one.
     attr_getter_and_setter :items
-    # @return [Symbol<:top, :bottom>] Where to display the menu on screen.
     attr_getter_and_setter :position
-    # @return [Boolean] If true, menu entries will be matched case insensitively.
     attr_getter_and_setter :case_insensitive
-    # @return [Number] Number of lines to display. If >1, dmenu will go into vertical mode.
     attr_getter_and_setter :lines
-    # @return [String] Which font to use.
     attr_getter_and_setter :font
-    # @return [String] The background color of normal items.
     attr_getter_and_setter :background
-    # @return [String] The foreground color of normal items.
     attr_getter_and_setter :foreground
-    # @return [String] The background color of selected items.
     attr_getter_and_setter :selected_background
-    # @return [String] The foreground color of selected items.
     attr_getter_and_setter :selected_foreground
-    # @return [String] Defines a prompt to be displayed before the input area.
     attr_getter_and_setter :prompt
 
     attr_getter_and_setter :x, :y, :width
@@ -62,23 +50,13 @@ module RMenu
       @items = items
     end
 
-    def items
-      @items.map! do |item|
-        if item.is_a?(Item)
-          item
-        else
-          Item.new(item, item)
-        end
-      end
-    end
-
     def get_item
       #run__sys_call_impl
       run__pipe_impl
     end
 
     def get_string
-      get_item.value
+      get_item[:value]
     end
 
     def get_array
@@ -95,7 +73,7 @@ module RMenu
     def run__pipe_impl
       pipe = IO.popen(command, "w+")
       items.each do |item|
-        pipe.puts item.to_s
+        pipe.puts item[:label]
       end
 
       pipe.close_write
@@ -108,20 +86,19 @@ module RMenu
       end
       value.chomp!
       selection = items.find do |item|
-        item.key.to_s == value
+        item[:label].to_s == value
       end
-      return selection || Item.new(value, value)
+      return selection || { key: value }
     end
 
     def run__sys_call_impl
-      i = items.map {|i| "#{i.to_s}" }
-      cmd = "echo -n \"#{i.join "\n"}\" | #{command.join " "} "
+      cmd = "echo -n \"#{items.map { |i| i[:label] }.join "\n"}\" | #{command.join " "} "
       value = `#{cmd}`
       $logger.debug  "Systemcall: #{cmd} => #{value}"
       selection = items.find do |item|
-        item.key.to_s == value
+        item[:label].to_s == value
       end
-      return selection || Item.new(value, value)
+      return selection || { key: value }
     end
 
     def command

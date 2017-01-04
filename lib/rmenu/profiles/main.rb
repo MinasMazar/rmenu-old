@@ -29,7 +29,7 @@ module RMenu
 
       def prepare
         super
-        items.sort_by! { |i| -1 * ( i.options[:picked] || 0 ) }
+        items.sort_by! { |i| -1 * ( i[:picked] || 0 ) }
         reset_item_added
       end
 
@@ -50,7 +50,7 @@ module RMenu
       end
 
       def save_items
-        items_to_save = items.reject { |i| i.options[:virtual] }
+        items_to_save = items.reject { |i| i[:virtual] }
         utils.save_items items_to_save, config[:items_file]
       end
 
@@ -59,21 +59,21 @@ module RMenu
           field = field.to_sym
           val = config[field]
           item = pick "Config[#{field}]: #{val} [THIS CODE WILL BE EVALUATED]"
-          item_evaluated = eval item.value
+          item_evaluated = eval item
           $logger.debug "Config modified: config[:#{field}] #{val} -> #{item_evaluated}"
           config[field] = item_evaluated
         else
           picker = DMenuWrapper.new config
           picker.prompt = "Config"
-          picker.items = config.map { |conf,v| Item.new("#{conf} [ #{v}]", conf) }
+          picker.items = config.map { |conf,v| { label: conf, key: v } }
           picker.lines = config.size
           item = picker.get_item
-          conf item.value unless item.value.empty?
+          conf item unless item.empty?
         end
       end
 
       def add item_str = nil
-        item = Item.parse item_str
+        item = { label: item_str, key: item_str }
         add_item item if item
       end
 
@@ -93,34 +93,34 @@ module RMenu
           notify DMenuWrapper.usage
         end
         menu, submenu = [], []
-        submenu << Item.format!("Edit config on the fly", :conf, virtual: true)
+        submenu << { label: "Edit config on the fly", key: :conf, virtual: true }
         if config[:text_editor]
-          submenu << Item.format!("Edit configuration file", "#{config[:text_editor]} #{config[:config_file]}", virtual: true)
+          submenu << { label: "Edit configuration file", key: "#{config[:text_editor]} #{config[:config_file]}", virtual: true }
         else
-          submenu << Item.format!("Edit configuration file (disabled: define config[:text_editor])", edit_build_launch_proc, virtual: true)
+          submenu << { label: "Edit configuration file (disabled: define config[:text_editor])", key: edit_build_launch_proc, virtual: true }
         end
-        submenu << Item.format!("Load config", :load_config, virtual: true)
-        submenu << Item.format!("Save config", :save_config, virtual: true)
+        submenu << { label: "Load config", key: :load_config, virtual: true }
+        submenu << { label: "Save config", key: :save_config, virtual: true }
         if config[:text_editor]
-          submenu << Item.format!("Edit items file", "#{config[:text_editor]} #{config[:items_file]}", virtual: true)
+          submenu << { label: "Edit items file", key: "#{config[:text_editor]} #{config[:items_file]}", virtual: true }
         else
-          submenu << Item.format!("Edit items file (disabled: define config[:text_editor])", edit_build_launch_proc, virtual: true)
+          submenu << { label: "Edit items file (disabled: define config[:text_editor])", key: edit_build_launch_proc, virtual: true }
         end
-        submenu << Item.format!("Load items", :build_items, virtual: true)
-        submenu << Item.format!("Save items", :save_items, virtual: true)
-        submenu << Item.format!("Quit RMenu", :stop, virtual: true)
-        submenu << Item.format!("DMenu Executable", [
-          Item.format!("Usage", get_dmenu_usage_proc, virtual: true)
-        ], virtual: true)
-        menu << Item.format!("RMenu", submenu, virtual: true)
+        submenu << { label: "Load items", key: :build_items, virtual: true }
+        submenu << { label: "Save items", key: :save_items, virtual: true }
+        submenu << { label: "Quit RMenu", key: :stop, virtual: true }
+        submenu << { label: "DMenu Executable", key: [
+          { label: "Usage", key: get_dmenu_usage_proc, virtual: true }
+        ], virtual: true}
+        menu << { label: "RMenu", key: submenu, virtual: true }
         menu
       end
 
       def proc(item)
         super item
-        if item && !item.options[:virtual]
-          item.options[:picked] ||= 0
-          item.options[:picked] += 1
+        if item && !item[:virtual]
+          item[:picked] ||= 0
+          item[:picked] += 1
         end
       end
 
@@ -129,7 +129,7 @@ module RMenu
         cmd, label = nil
         if md = str.match(/(.+)\s*#\s*(.+)/)
           cmd, label = md[1], md[2].strip
-          item = Item.format!(label, cmd, user_defined: true)
+          item = { label: label, key: cmd, user_defined: true }
           add_item item unless item_added?
         end
       end
