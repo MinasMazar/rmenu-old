@@ -18,6 +18,11 @@ module RMenu
         reset_item_added
       end
 
+      def add_item item
+        super
+        save_items
+      end
+
       def build_items(rebuild = false)
         super
         # Rebuild application items (XDG .desktop directory)
